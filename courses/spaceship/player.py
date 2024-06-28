@@ -70,12 +70,15 @@ if __name__ == "__main__":
                 print(move, end="")
             print()    
             break
-
         try:
-            dx, dy = map(int, keylookup[int(move_input)])
-            tracker.updateVelocity(dx, dy)
-            key_history.append(move_input)
-
+            move = int(move_input)
+            if 1 <= move <= 9:
+                dx, dy = map(int, keylookup[move])
+                tracker.updateVelocity(dx, dy)
+                key_history.append(move_input)
+            else:
+                raise ValueError
             
         except ValueError:
-            print("Invalid input. Please enter two integers separated by a space.")
+            print("Invalid input. Please us an integer between 1 and 9.")
+            
