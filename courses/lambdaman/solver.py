@@ -53,14 +53,24 @@ def a_star_pathfinding(board, start):
     path = []
     moves = []
     current = start
-    while current in came_from:
-        path.append(current)
-        current, move = came_from[current]
-        moves.append(move)
 
-    path.reverse()
-    moves.reverse()
+    # Trace the path from the goal back to the start
+    for prev, move in came_from.items():
+        move_pos, move_key = move
+        path.append(current)
+        moves.append(move_key)
+        current = prev
+
     return path, ''.join(moves)
+
+def display_board(board, lambda_position):
+    board_copy = [row[:] for row in board]
+    x, y = lambda_position
+    board_copy[x][y] = 'L'
+
+    for row in board_copy:
+        print(''.join(row))
+    print()
 
 def display_path_on_board(board, path):
     board_copy = [row[:] for row in board]
@@ -101,6 +111,7 @@ if __name__ == "__main__":
     # Find the path using A* algorithm
     path, moves = a_star_pathfinding(board, start)
 
+    display_board(board, start)
     # Display the path on the board
     display_path_on_board(board, path)
 
