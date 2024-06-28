@@ -86,12 +86,64 @@ class ICFP:
     def encode_binary_operator(self, op, left, right):
         return f"B{op} {self.encode(left)} {self.encode(right)}"
 
-    def decode_binary_operator(self, token):
-        op = token[1]
-        tokens = token[3:].split(' ', 1)
-        left = self.decode(tokens[0])
-        right = self.decode(tokens[1])
-        return f"B{op}", left, right
+    def decode_binary_operator(self, token, tokens):
+        op = token[1:]
+        left, tokens = self.decode(tokens)
+        right, tokens = self.decode(tokens)
+        return { "binary": op, "left": left, "right": right }, tokens
+
+    # +	Integer addition	B+ I# I$ -> 5
+    # -	Integer subtraction	B- I$ I# -> 1
+    # *	Integer multiplication	B* I$ I# -> 6
+    # /	Integer division (truncated towards zero)	B/ U- I( I# -> -3
+    # %	Integer modulo	B% U- I( I# -> -1
+    # <	Integer comparison	B< I$ I# -> false
+    # >	Integer comparison	B> I$ I# -> true
+    # =	Equality comparison, works for int, bool and string	B= I$ I# -> false
+    # |	Boolean or	B| T F -> true
+    # &	Boolean and	B& T F -> false
+    # .	String concatenation	B. S4% S34 -> "test"
+    # T	Take first x chars of string y	BT I$ S4%34 -> "tes"
+    # D	Drop first x chars of string y	BD I$ S4%34 -> "t"
+    # $	Apply term x to y (see Lambda abstractions)
+    def interp_binary_operator(self, token, tokens):
+        op = token[1:]
+        left, tokens = self.interp(tokens)
+        right, tokens = self.interp(tokens)
+        print(f"op: {op}, left: {left}, right: {right}")
+
+        if op == "+":
+            return left + right, tokens
+        elif op == "-":
+            return left - right, tokens
+        elif op == "*":
+            return left * right, tokens
+        elif op == "/":
+            return int(left / right), tokens
+        # elif op == "%":
+        #     return left % right, tokens
+        elif op == "<":
+            return left < right, tokens
+        elif op == ">":
+            return left > right, tokens
+        elif op == "=":
+            return left == right, tokens
+        elif op == "|":
+            return left or right, tokens
+        elif op == "&":
+            return left and right, tokens
+        elif op == ".":
+            return left + right, tokens
+        elif op == "T":
+            return right[:left], tokens
+        elif op == "D":
+            return right[left:], tokens
+        elif op == "$":
+            # .... TODO
+            pass
+        else:
+            raise ValueError(f"Unknown binary operator: {op}")
+
 
     def to_base94(self, value):
         if value == 0:
