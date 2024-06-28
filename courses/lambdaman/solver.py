@@ -1,7 +1,16 @@
-import heapq
 import math
+from pathlib import Path
+import sys
 import time
 from astar import AStar
+
+# Append the root directory to the sys.path
+# expanded_path = os.expandPath(__file__)
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(BASE_DIR))
+
+from icfp_client import ICFPClient
+
 
 WALL_CHAR = "#"
 PILL_CHAR = "."
@@ -24,6 +33,7 @@ class LambdaSolver(AStar):
         """computes the 'direct' distance between two (x,y) tuples"""
         (x1, y1) = n1
         (x2, y2) = n2
+
         return math.hypot(x2 - x1, y2 - y1)
 
     def distance_between(self, n1, n2):
@@ -70,7 +80,6 @@ def get_neighbors(board, position):
 
 
 def heuristic_cost_estimate(positionA, positionB):
-    print(positionA, positionB)
     return abs(positionA[0] - positionB[0]) + abs(positionA[1] - positionB[1])
 
 
@@ -92,7 +101,7 @@ def a_star_pathfinding(board, start):
         ]
     )
     visited.add(start)
-    forks = []
+    forks = set()
 
     while remaining := valid_pos - visited:
         neighbors = get_neighbors(board, last_position)
@@ -103,12 +112,15 @@ def a_star_pathfinding(board, start):
             # Add all the other neighbors to the forks
             for neighbor in neighbors:
                 if neighbor != next_position:
-                    forks.append(neighbor)
+                    forks.add(neighbor)
         elif len(remaining_neighbors) == 1:
             next_position = remaining_neighbors.pop()
         # If there are no remaining neighbors, go back to the last fork
         elif forks:
             next_position = forks.pop()
+
+            # remove all forks of the same value
+            # forks = [fork for fork in forks if fork != next_position]
         else:
             next_position = remaining.pop()
 
@@ -282,7 +294,7 @@ def simulate_moves(board, moves):
         lambda_position = move_lambda(board, lambda_position, move)
         visited.add(lambda_position)
         display_board(board, lambda_position, visited)
-        time.sleep(0.05)
+        time.sleep(0.01)
         # Clear the display
         clear_display()
 
@@ -298,7 +310,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("file_path", type=str)
+
     parser.add_argument("--display", action="store_true")
+    parser.add_argument("--submit", action="store_true")
 
     args = parser.parse_args()
 
@@ -329,3 +343,17 @@ if __name__ == "__main__":
     else:
         print(f"Path length: {len(path)}")
         print(f"Moves: {moves}")
+
+    if args.submit:
+        client = ICFPClient()
+
+        # grep the number from the file name
+
+        file_name = Path(file_path).name
+        # remove lambdaman if present and .txt
+        file_name = file_name.replace("lambdaman", "").replace(".txt", "")
+        number = int(file_name)
+        print("Number:", number)
+        response, decoded = client.call(f"solve lambdaman{number} {moves}")
+
+        print(f"Response: {decoded}")
