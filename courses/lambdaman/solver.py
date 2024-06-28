@@ -8,6 +8,9 @@ DOWN_MOVE = 'D'
 LEFT_MOVE = 'L'
 RIGHT_MOVE = 'R'
 
+# EXAMPLE
+# python courses/lambdaman/solver.py  courses/lambdaman/lambdaman3.txt
+
 
 def a_star_pathfinding(board, start):
     def heuristic(a, b):
@@ -103,3 +106,5 @@ if __name__ == "__main__":
 
     print(f"Path length: {len(path)}")
     print(f"Moves: {moves}")
+
+
