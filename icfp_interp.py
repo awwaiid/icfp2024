@@ -16,6 +16,8 @@ class ICFP:
     """
 
     def __init__(self):
+        self.debug_mode = False
+
         chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n"
         int_chars = ''.join(chr(i) for i in range(33, 127))  # ASCII characters from 33 to 126
         self.char_to_base94 = {char: idx for idx, char in enumerate(chars)}
@@ -23,6 +25,10 @@ class ICFP:
 
         self.int_to_char = {idx: char for idx, char in enumerate(int_chars)}
         self.char_to_int = {char: idx for idx, char in enumerate(int_chars)}
+
+    def debug(self, msg):
+        if self.debug_mode:
+            print(msg)
 
     def encode_boolean(self, value):
         return "T" if value else "F"
@@ -115,7 +121,6 @@ class ICFP:
         op = token[1:]
         left, tokens = self.interp(tokens)
         right, tokens = self.interp(tokens)
-        print(f"op: {op}, left: {left}, right: {right}")
 
         if op == "+":
             return left + right, tokens
@@ -149,6 +154,15 @@ class ICFP:
         else:
             raise ValueError(f"Unknown binary operator: {op}")
 
+    def decode_lambda(self, token, tokens):
+        body = token[1:]
+        var_num = self.from_base94(body)
+        return { "lambda": var_num }, tokens
+
+    def decode_variable(self, token, tokens):
+        body = token[1:]
+        var_num = self.from_base94(body)
+        return { "var": var_num }, tokens
 
     def to_base94(self, value):
         if value == 0:
@@ -197,10 +211,15 @@ class ICFP:
             return self.decode_unary_operator(token, tokens)
         elif token.startswith("B"):
             return self.decode_binary_operator(token, tokens)
+        elif token.startswith("L"):
+            return self.decode_lambda(token, tokens)
+        elif token.startswith("v"):
+            return self.decode_variable(token, tokens)
         else:
-            raise ValueError("Unknown token type")
+            raise ValueError(f"Unknown token type: {token}")
 
     def interp(self, tokens):
+        self.debug(f"interp: {tokens}")
         if len(tokens) == 0:
             return [], tokens
         token = tokens.pop(0)
@@ -215,9 +234,10 @@ class ICFP:
         elif token.startswith("B"):
             return self.interp_binary_operator(token, tokens)
         else:
-            raise ValueError("Unknown token type")
+            raise ValueError(f"Unknown token type for token: {token}")
 
     def interp_from_string(self, input):
+        self.debug(f"interp_from_string: {input}")
         return self.interp(input.split(' '))
 
 if __name__ == "__main__":
@@ -227,16 +247,25 @@ if __name__ == "__main__":
   parser.add_argument("--encode", action="store_true")
   parser.add_argument("--decode", action="store_true")
   parser.add_argument("--interp", action="store_true")
+  parser.add_argument("--debug", action="store_true")
   args = parser.parse_args()
 
   icfp = ICFP()
 
-  if args.encode:
+  if args.debug:
+      icfp.debug_mode = True
+
+  if args.interp:
+      result, _ = icfp.interp_from_string(input())
+      if args.encode:
+          print(icfp.encode(result))
+      else:
+          print(result)
+  elif args.encode:
       print(icfp.encode(input()))
   elif args.decode:
       print(json.dumps(icfp.decode(input().split(' '))))
-  elif args.interp:
-      print(icfp.interp_from_string(input()))
+      # print(icfp.encode(result))
   else:
       print("Please specify --encode or --decode")
       exit(1)
