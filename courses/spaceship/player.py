@@ -12,9 +12,9 @@ class PositionTracker:
         return (self.x, self.y)
 
     def update_velocity(self, dx, dy):
-        print(f"Updating Velocity by {dx}, {dy}")
+        #print(f"Updating Velocity by {dx}, {dy}")
         self.v = [self.v[0] + dx, self.v[1] + dy]
-        print(f"New Velocity: {self.v}")
+        #print(f"New Velocity: {self.v}")
 
         self.move(self.v[0], self.v[1])
         self.velocity_history.append(self.v)
@@ -85,6 +85,8 @@ class PositionMap:
         self.pending = []
     
     def import_positions(self, positions):
+        self.visited = []
+        self.pending = []
         lines = positions.strip().splitlines()  # Split the string into lines
         for line in lines:
             line = line.strip()  # Remove any leading/trailing whitespace
@@ -131,100 +133,76 @@ class PositionMap:
     #def get_next_direction(pos):
 
     
+class Player:
+    def __init__(self, tracker, grid):
+        self.tracker = tracker
+        self.grid = grid
+        self.map_data = """1 -1
+1 -3
+2 -5
+2 -8
+3 -10
+"""         
+        grid.import_positions(self.map_data)
+        self.keylookup = {
+            1: [-1,-1],
+            2: [0,-1],
+            3: [1,-1],
+            4: [-1,0],
+            5: [0,0],
+            6: [1,0],
+            7: [-1,1],
+            8: [0,1],
+            9: [1,1]
+            }
 
+        self.key_history = []
+        self.all_clear = False
 
+    def import_map_data(self, data):
+        self.map_data = data
+        self.grid.import_positions(data)
+
+    def get_map_data(self):
+        return self.map_data
     
+    def get_key_history(self):
+        history_out = []
+        for i, move in enumerate(self.key_history, start=1):
+            history_out.append(move)
+        return history_out
+
+    def move(self, move):
+        if 1 <= move <= 9:
+            dx, dy = map(int, self.keylookup[move])
+            self.tracker.update_velocity(dx, dy)
+            self.key_history.append(move)
+            self.grid.visit(self.tracker.get_current_pos())
+            if (self.grid.all_visited()):
+                self.all_clear = True
+
 
 if __name__ == "__main__":
     tracker = PositionTracker()
     print("Starting position and velocity: (0, 0)")
-
-    keylookup = {
-    1: [-1,-1],
-    2: [0,-1],
-    3: [1,-1],
-    4: [-1,0],
-    5: [0,0],
-    6: [1,0],
-    7: [-1,1],
-    8: [0,1],
-    9: [1,1]
-    }
-
-
-    map_data = """0 1
-0 1
--1 2
--1 4
-0 7
-1 10
-3 12
-5 13
-7 14
-8 14
-8 13
-9 13
-10 14
-11 15
-12 15
-14 16
-17 16
-20 15
-22 15
-23 14
-25 12
-27 10
-29 8
-32 6
-35 4
-37 2
-40 -1
-44 -4
-49 -8
-53 -11
-58 -14
-63 -18
-68 -22
-72 -26
-77 -29
-81 -33
-85 -37
-88 -42
-90 -48
-92 -55
-94 -61
-95 -68
-95 -76
-94 -84
-93 -93
-92 -102
-92 -112
-92 -122
-93 -131
-94 -140
-"""
-
-    key_history = []
-
     pos_map = PositionMap()
-    pos_map.import_positions(map_data)
+    player = Player(tracker, pos_map)
 
     while True:
         current = tracker.get_current_pos()
         closest = pos_map.get_closest(current)
 
         print (f"Current: {current}, Closest: {closest}")
-
         suggested = tracker.get_direction_to_position(closest)
         print (f"Suggested {suggested}")
         
         move_input = input("Enter your velocity as a number key (or 'quit' to exit) (0 for the suggested move): ")
         if move_input.lower() == 'quit':
             print("Key history:")
-            for i, move in enumerate(key_history, start=1):
-                print(move, end="")
-            print()    
+            print(player.get_key_history())
+            print()
             break
+
         if move_input == '':
             move_input = suggested
         try:
@@ -234,16 +212,12 @@ if __name__ == "__main__":
             if 0 <= move <= 9:
                 if move == 0:
                     move = suggested
-                dx, dy = map(int, keylookup[move])
-                tracker.update_velocity(dx, dy)
-                key_history.append(move_input)
-                pos_map.visit(tracker.get_current_pos())
-                if (pos_map.all_visited()):
+                player.move(move)
+                if player.all_clear:
                     print("Success!")
                     print("Key history:")
-                    for i, move in enumerate(key_history, start=1):
-                        print(move, end="")
-                    print()    
+                    result = ''.join(map(str, player.get_key_history()))
+                    print(result)
                     break
                 tracker.print_status()
                 pos_map.print_status()
