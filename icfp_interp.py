@@ -29,9 +29,8 @@ class ICFP:
         return (token == "T"), tokens
 
     def encode_integer(self, value):
-        token = tokens.pop(0)
         base94 = self.to_base94(value)
-        return ("I" + base94), tokens
+        return "I" + base94
 
     def decode_integer(self, token, tokens):
         base94 = token[1:]
@@ -44,6 +43,10 @@ class ICFP:
     def encode_string(self, value):
         encoded_body = ''.join(chr(self.char_to_base94[char] + 33) for char in value)
         return "S" + encoded_body
+
+    def raw_decode_string(self, token):
+        encoded_body = token[1:]
+        return ''.join(self.base94_to_char[ord(char) - 33] for char in encoded_body)
 
     def decode_string(self, token, tokens):
         encoded_body = token[1:]
@@ -69,9 +72,14 @@ class ICFP:
         elif op == '!':
             return not operand, tokens
         elif op == '#':
+            operand = self.encode_string(operand)
+            operand = operand[1:]
             return self.from_base94(operand), tokens
         elif op == '$':
-            return self.encode_string(self.decode_integer(operand_token)), tokens
+            operand = self.encode_integer(operand)
+            operand = operand[1:]
+            operand = "S" + operand
+            return self.raw_decode_string(operand), tokens
         else:
             raise ValueError(f"Unknown unary operator: {op}")
 
@@ -153,7 +161,6 @@ class ICFP:
             raise ValueError("Unknown token type")
 
     def interp_from_string(self, input):
-        print(self.interp(input.split(' ')))
         return self.interp(input.split(' '))
 
 if __name__ == "__main__":

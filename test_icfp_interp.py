@@ -21,10 +21,14 @@ def test_basic_string(icfp):
 def test_basic_integer(icfp):
     assert_interp(icfp, "I/6", 1337)
 
-def test_basic_binop(icfp):
+def test_basic_unary(icfp):
+    assert_interp(icfp, "U- I/6", -1337)
     assert_interp(icfp, "U! T", False)
     assert_interp(icfp, "U! F", True)
+    assert_interp(icfp, "U# S4%34", 15818151)
+    assert_interp(icfp, "U$ I4%34", "test")
 
-def test_basic_binop(icfp):
-    assert_interp(icfp, "U! T", False)
-    assert_interp(icfp, "U! F", True)
+# def test_basic_binop(icfp):
+#     assert_interp(icfp, "U! T", False)
+#     assert_interp(icfp, "U! F", True)
+
