@@ -39,7 +39,8 @@ The following levels are available:
 * [lambdaman18] Best score: 6200.
 * [lambdaman19] Best score: 5159.
 * [lambdaman20] Best score: 9065.
-* [lambdaman21] Best score: 34831.
+* [lambdaman21] Best score:
+.
 
 To submit a solution, send an ICFP expression that evaluates to:
 
