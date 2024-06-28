@@ -43,6 +43,11 @@ if __name__ == "__main__":
                 result = ''.join(map(str, player.get_key_history()))
                 print(result)
                 print()
+                print("Submitting")
+                response, decoded = client.call(f"solve spaceship{game_num} {result}")
+
+                print(decoded)
+
 
             else:
                 raise ValueError
