@@ -1,4 +1,9 @@
+#!/usr/bin/env python
+
 import json
+
+def remainder(n, d):
+    return (-1 if n < 0 else 1) * (abs(n) % abs(d))
 
 class ICFP:
     """
@@ -120,8 +125,8 @@ class ICFP:
             return left * right, tokens
         elif op == "/":
             return int(left / right), tokens
-        # elif op == "%":
-        #     return left % right, tokens
+        elif op == "%":
+            return remainder(left, right), tokens
         elif op == "<":
             return left < right, tokens
         elif op == ">":

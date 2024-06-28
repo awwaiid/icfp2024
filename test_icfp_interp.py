@@ -54,7 +54,7 @@ def test_basic_binop(icfp):
     assert_interp(icfp, "B- I$ I#", 1)
     assert_interp(icfp, "B* I$ I#", 6)
     assert_interp(icfp, "B/ U- I( I#", -3)
-    # assert_interp(icfp, "B% U- I( I#", -1)
+    assert_interp(icfp, "B% U- I( I#", -1)
     assert_interp(icfp, "B< I$ I#", False)
     assert_interp(icfp, "B> I$ I#", True)
     assert_interp(icfp, "B= I$ I#", False)
