@@ -2,7 +2,6 @@ import pytest
 
 from icfp_parser import ICFP
 
-
 @pytest.fixture
 def icfp():
     return ICFP()
@@ -13,8 +12,8 @@ def test_unary_integer_negation(icfp):
     input_token = "U- I$"
     expected_output = -3
     decoded = icfp.decode(input_token)
-    assert decoded == ("U-", expected_output)
-    encoded = icfp.encode(decoded)
+    assert decoded ==  expected_output
+    encoded = icfp.encode(decoded, "-")
     assert encoded == input_token
 
 def test_unary_boolean_not(icfp):
@@ -22,7 +21,7 @@ def test_unary_boolean_not(icfp):
     expected_output = False
     decoded = icfp.decode(input_token)
     assert decoded == ("U!", expected_output)
-    encoded = icfp.encode(decoded)
+    encoded = icfp.encode(decoded, "!")
     assert encoded == input_token
 
 def test_unary_string_to_int(icfp):
@@ -80,5 +79,3 @@ def test_encode_decode_integer(icfp):
     assert icfp.encode(0) == "I!"
     assert icfp.decode("I!") == 0
 
-if __name__ == "__main__":
-    pytest.main()
