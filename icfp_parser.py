@@ -1,4 +1,13 @@
 class ICFP:
+    """
+    The ICFP class is a parser for the ICFP programming language. It can encode and decode ICFP tokens.
+
+
+    Example usage:
+        echo 'SB%,,/}Q/2,$_' | python icfp_parser.py --decode
+
+    """
+
     def __init__(self):
         # Works for Strings
         chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\]^_`|~ \n"
