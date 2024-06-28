@@ -9,7 +9,7 @@ class ICFP:
     """
 
     def __init__(self):
-        chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\]^_`|~ \n"
+        chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n"
         int_chars = ''.join(chr(i) for i in range(33, 127))  # ASCII characters from 33 to 126
         self.char_to_base94 = {char: idx for idx, char in enumerate(chars)}
         self.base94_to_char = {idx: char for idx, char in enumerate(chars)}
