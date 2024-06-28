@@ -30,8 +30,8 @@ def main():
             # write the response to a file
             normalize_prompt = english.replace(" ", "_")
 
-            with open(f"courses/{normalize_prompt}.txt", "w") as f:
-                f.write(decoded)
+            # with open(f"courses/{normalize_prompt}.txt", "w") as f:
+            #     f.write(decoded)
             print(f"{decoded}")
         except Exception as e:
             response = str(e)
@@ -43,9 +43,9 @@ def main():
             # make a directory to store the response
             os.makedirs("responses", exist_ok=True)
             # write the response to a file
-            normalize_prompt = english.replace(" ", "_")
-            with open(f"responses/{normalize_prompt}.txt", "w") as f:
-                f.write(response)
+            # normalize_prompt = english.replace(" ", "_")
+            # with open(f"responses/{normalize_prompt}.txt", "w") as f:
+            #     f.write(response)
 
 
 main()
