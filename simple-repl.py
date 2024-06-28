@@ -14,6 +14,14 @@ client = Client()
 def main():
     while True:
         english = input(">>> ")
+        if english == "```":
+            multiline = []
+            while True:
+                line = input("... ")
+                if line == "```":
+                    break
+                multiline.append(line)
+            english = "\n".join(multiline)
         # print(f"english: {english}")
         # Send this to the stdin of the encoder
         try:
