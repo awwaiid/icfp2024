@@ -9,6 +9,8 @@ class Client:
 
     def call(self, prompt):
         icfp = ICFP()
+        if prompt == "":
+            return None, ""
         if prompt[0] == "`":
             encoded_prompt = prompt[1:]
         else:
