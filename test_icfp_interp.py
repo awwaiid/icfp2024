@@ -68,8 +68,20 @@ def test_basic_binop(icfp):
 def test_basic_apply(icfp):
     assert_interp(icfp, "B$ L\" v\" B- I( I#", 5)
     assert_interp(icfp, "B$ B$ L# L$ v# B. SB%,,/ S}Q/2,$_ IK", "Hello World!")
+
+    # (apply (lambda v0 (+ v0 v0)) (* 3 2))
+    assert_interp(icfp, "B$ L\" B+ v\" v\" B* I$ I#", 12)
+
+    # (apply (lambda v2 (apply (lambda v0 (+ v0 v0)) (* 3 2))) v23)
     assert_interp(icfp, "B$ L# B$ L\" B+ v\" v\" B* I$ I# v8", 12)
 
 def test_conditional(icfp):
     assert_interp(icfp, "? T I$ I#", 3)
     assert_interp(icfp, "? F I$ I#", 2)
+
+def test_lambda_shadowing(icfp):
+    # (apply (lambda v0 (* (apply (lambda v0 (+ v0 v0)) v0) v0)) 3)
+    # (\x. (apply (\x. (+ x x)) x) x) 3
+    assert_interp(icfp, "B$ L\" B* v\" v\" I$", 9)
+    assert_interp(icfp, "B$ L\" B* B$ L\" B+ v\" v\" v\" v\" I$", 18)
+

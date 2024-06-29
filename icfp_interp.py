@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import json
+from copy import deepcopy
 
 def remainder(n, d):
     return (-1 if n < 0 else 1) * (abs(n) % abs(d))
@@ -112,6 +113,39 @@ class ICFP:
         right, tokens = self.parse(tokens)
         return { "type": "binop", "op": op, "left": left, "right": right }, tokens
 
+    def replace_var(self, ast, target_var, new_value):
+        # print(f"replace_var. Lambda body: {json.dumps(ast)}")
+        # print(f"replace_var. Target var: {target_var}")
+        # print(f"replace_var. New value: {json.dumps(new_value)}")
+        if ast["type"] == "var":
+            if ast["var"] == target_var:
+                return new_value
+            else:
+                return ast
+        elif ast["type"] == "binop":
+            left = self.replace_var(ast["left"], target_var, new_value)
+            right = self.replace_var(ast["right"], target_var, new_value)
+            return { "type": "binop", "op": ast["op"], "left": left, "right": right }
+        elif ast["type"] == "unary":
+            left = self.replace_var(ast["left"], target_var, new_value)
+            return { "type": "unary", "op": ast["op"], "left": left }
+        elif ast["type"] == "if":
+            condition = self.replace_var(ast["condition"], target_var, new_value)
+            true_branch = self.replace_var(ast["true"], target_var, new_value)
+            false_branch = self.replace_var(ast["false"], target_var, new_value)
+            return { "type": "if", "condition": condition, "true": true_branch, "false": false_branch }
+        elif ast["type"] == "lambda":
+            if ast["var"] == target_var:
+                # This lambda overrides the target_var, so don't go deeper
+                return ast
+            else:
+                return { "type": "lambda", "var": ast["var"], "body": self.replace_var(ast["body"], target_var, new_value) }
+        else:
+            # The rest are constants
+            return ast
+
+
+
     # +	Integer addition	B+ I# I$ -> 5
     # -	Integer subtraction	B- I$ I# -> 1
     # *	Integer multiplication	B* I$ I# -> 6
@@ -126,51 +160,97 @@ class ICFP:
     # T	Take first x chars of string y	BT I$ S4%34 -> "tes"
     # D	Drop first x chars of string y	BD I$ S4%34 -> "t"
     # $	Apply term x to y (see Lambda abstractions)
+    #
+    # Did you know that the binary call-by-name application operator `$` has
+    # two siblings? The binary operator `~` (lazy application) is a
+    # call-by-need variant on the `$` operator, and the binary operator `!`
+    # (strict application) is the call-by-value variant. Smart usage of these
+    # can help you save many beta reductions!
     def interp_binary_operator(self, ast, env):
         op = ast["op"]
 
         if op == "$":
             # Left is a lambda, right is a value
             lambda_ast = self.interp(ast["left"], env)
+            if lambda_ast["type"] != "lambda":
+                raise ValueError(f"Expected lambda, got {lambda_ast}")
             lambda_var = lambda_ast["var"]
             lambda_body = lambda_ast["body"]
             arg = ast["right"]
-            # env = env.copy()
-            env[lambda_var] = arg
-            # print(f"apply -> (v{lambda_var}. {json.dumps(lambda_ast)}) {json.dumps(arg)}\nENV: {json.dumps(env)}")
-            result = self.interp(lambda_body, env)
+
+            # Traverse the lambda_body and replace all vars that match the lambda var with the argument
+            result = self.replace_var(lambda_body, lambda_var, arg)
+
+            # env = deepcopy(env)
+            # env[lambda_var] = arg
+            result = self.interp(result, env)
             return result
 
         left = self.interp(ast["left"], env)
         right = self.interp(ast["right"], env)
+        # print(f"binary op: {op}")
+        # print(f"left: {json.dumps(left)}")
+        # print(f"right: {json.dumps(right)}")
         left_value = left["value"]
         right_value = right["value"]
 
         if op == "+":
+            if left["type"] != "integer" or right["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left} and {right}")
             return { "type": "integer", "value": left_value + right_value }
         elif op == "-":
+            if left["type"] != "integer" or right["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left} and {right}")
             return { "type": "integer", "value": left_value - right_value }
         elif op == "*":
+            if left["type"] != "integer" or right["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left} and {right}")
             return { "type": "integer", "value": left_value * right_value }
         elif op == "/":
+            if left["type"] != "integer" or right["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left} and {right}")
             return { "type": "integer", "value": int(left_value / right_value) }
         elif op == "%":
+            if left["type"] != "integer" or right["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left} and {right}")
             return { "type": "integer", "value": remainder(left_value, right_value) }
         elif op == "<":
+            if left["type"] != "integer" or right["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left} and {right}")
             return { "type": "boolean", "value": left_value < right_value }
         elif op == ">":
+            if left["type"] != "integer" or right["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left} and {right}")
             return { "type": "boolean", "value": left_value > right_value }
         elif op == "=":
-            return { "type": "boolean", "value": left_value == right_value }
+            if left["type"] == "integer" and right["type"] == "integer":
+                return { "type": "boolean", "value": left_value == right_value }
+            if left["type"] == "string" and right["type"] == "string":
+                return { "type": "boolean", "value": left_value == right_value }
+            raise ValueError(f"Expected integers or strings, got {left} and {right}")
         elif op == "|":
+            if left["type"] != "boolean" or right["type"] != "boolean":
+                raise ValueError(f"Expected boolean, got {left} and {right}")
             return { "type": "boolean", "value": left_value or right_value }
         elif op == "&":
+            if left["type"] != "boolean" or right["type"] != "boolean":
+                raise ValueError(f"Expected boolean, got {left} and {right}")
             return { "type": "boolean", "value": left_value and right_value }
         elif op == ".":
+            if left["type"] != "string" or right["type"] != "string":
+                raise ValueError(f"Expected string, got {left} and {right}")
             return { "type": "string", "value": left_value + right_value }
         elif op == "T":
+            if left["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left}")
+            if right["type"] != "string":
+                raise ValueError(f"Expected integer, got {right}")
             return { "type": "string", "value": right_value[:left_value] }
         elif op == "D":
+            if left["type"] != "integer":
+                raise ValueError(f"Expected integer, got {left}")
+            if right["type"] != "string":
+                raise ValueError(f"Expected integer, got {right}")
             return { "type": "string", "value": right_value[left_value:] }
         else:
             raise ValueError(f"Unknown binary operator: {op}")
@@ -184,13 +264,17 @@ class ICFP:
     def interp_lambda(self, ast, env):
         return ast
 
+    def encode_lambda(self, ast):
+        return f"L{self.to_base94(ast['var'])} {self.encode(ast['body'])}"
+
     def parse_variable(self, token, tokens):
         body = token[1:]
         var_num = self.from_base94(body)
         return { "type": "var", "var": var_num }, tokens
 
     def interp_variable(self, ast, env):
-        return env[ast["var"]]
+        # return env[ast["var"]]
+        return ast
 
     def encode_variable(self, ast):
         return f"v{self.to_base94(ast['var'])}"
@@ -270,8 +354,8 @@ class ICFP:
             raise ValueError(f"Unknown token type: {token}")
 
     def interp(self, ast, env = {}):
-        # env = env.copy()
-        env["depth"] = env.get("depth", 0) + 1
+        # env = deepcopy(env)
+        # env["depth"] = env.get("depth", 0) + 1
         # self.debug(f"{env['depth'] * 2 * ' '}env: {json.dumps(env)}")
         # self.debug(f"{env['depth'] * 2 * ' '}interp: {json.dumps(ast)}")
 
