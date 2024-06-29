@@ -9,8 +9,12 @@ class Client:
 
     def call(self, prompt):
         icfp = ICFP()
-        encoded_prompt = icfp.raw_encode_string(prompt)
+        if prompt[0] == "`":
+            encoded_prompt = prompt[1:]
+        else:
+            encoded_prompt = icfp.raw_encode_string(prompt)
         response = requests.post(self.url, headers=self.headers, data=encoded_prompt)
+        # print(f"raw response: {response.text}")
         result = icfp.interp_from_string(response.text)
 
         return response, result
