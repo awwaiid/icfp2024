@@ -251,7 +251,7 @@ class Board:
     def display(self):
         for i in range(self.height):
             for j in range(self.width):
-                self.node_at((i, j)).display()
+                print(self.node_at((i, j)).display(), end="")
             print()
         print("Number:", self.number)
         print("Moves:", "".join(self.moves))
@@ -345,13 +345,13 @@ class Node:
             and hasattr(self.board, "current_pos")
             and self.position == self.board.current_pos.position
         ):
-            print(f"{bcolors.OKGREEN}{PLAYER_CHAR}{bcolors.ENDC}", end="")
+            return f"{bcolors.OKGREEN}{PLAYER_CHAR}{bcolors.ENDC}"
         elif hasattr(self.board, "visited") and self.position in self.board.visited:
-            print(VISITED_CHAR, end="")
+            return VISITED_CHAR
         elif self.char == WALL_CHAR:
-            print(f"{bcolors.WARNING}{WALL_CHAR}{bcolors.ENDC}", end="")
+            return f"{bcolors.WARNING}{WALL_CHAR}{bcolors.ENDC}"
         else:
-            print(self.char, end="")
+            return self.char
 
 
 class LambdaSolver(AStar):
@@ -456,20 +456,11 @@ def a_star_pathfinding(board):
     return [], "".join(board.moves)
 
 
-def simulate_moves(board, moves, stdscr=None):
-    # Simulate each move
-    for move in moves:
-        board.move(move)
-        board.display()
-        time.sleep(DISPLAY_SPEED)
-        clear_display(stdscr)
-
-
 def clear_display(stdscr=None):
     print("\033c", end="")
 
 
-def main():
+def main(stdscr=None):
     # take in a file path as input
     # read the file, treating each line as a row in the board
     import argparse
@@ -511,19 +502,49 @@ def main():
     )
 
     if args.repl:
+        import sys
+        import termios
+        import tty
+
+        def get_key():
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                ch1 = sys.stdin.read(1)
+                if ch1 == "\x1b":
+                    ch2 = sys.stdin.read(1)
+                    if ch2 == "[":
+                        ch3 = sys.stdin.read(1)
+                        return ch1 + ch2 + ch3
+                    else:
+                        return ch1 + ch2
+                else:
+                    return ch1
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
         move = None
         while True:
             board.display()
-            move = input("Enter move: ")
-            if move == "exit":
+            key = get_key()
+
+            if key == "\x1b[A":  # Up arrow
+                move = "U"
+            elif key == "\x1b[B":  # Down arrow
+                move = "D"
+            elif key == "\x1b[C":  # Right arrow
+                move = "R"
+            elif key == "\x1b[D":  # Left arrow
+                move = "L"
+            elif key == "q":  # Exit on 'q'
                 break
-            if move == "submit":
+
+            elif key == "s":
+                board.submit()
                 break
             board.move(move.upper())
             clear_display()
-
-        if move == "submit":
-            board.submit()
 
         board.display()
         print("Moves:", "".join(board.moves))
