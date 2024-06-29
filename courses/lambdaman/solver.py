@@ -8,6 +8,7 @@ import time
 import sys
 import time
 from astar import AStar
+import pprint
 
 # Append the root directory to the sys.path
 # expanded_path = os.expandPath(__file__)
@@ -15,6 +16,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(BASE_DIR))
 
 from icfp_client import ICFPClient
+
+
+DISPLAY_SPEED = 0.02
 
 
 class bcolors:
@@ -40,36 +44,43 @@ RIGHT_MOVE = "R"
 
 
 class Board:
-    def __init__(self, board, start_position, number=0):
+    def __init__(self, board, start_position, number=0, display=False):
         self.board = board
         self.width = len(board[0])
         self.height = len(board)
         self.number = number
-
+        self.graph = {}
         self.recompute()
         self.start_position = self.node_at(start_position)
         self.current_pos = self.start_position
         self.visited = set()
         self.visited.add(start_position)
         self.moves = []
+        self.wall_positions = set(
+            (i, j)
+            for i in range(self.height)
+            for j in range(self.width)
+            if self.board[i][j] == WALL_CHAR
+        )
+        self.display_moves = display
+
+    def add_edge(self, node1, node2, weight):
+        if node1 not in self.graph:  # Check if the node is already added
+            self.graph[node1] = {}  # If not, create the node
+        self.graph[node1][node2] = weight  # Else, add a connection to its neighbor
 
     def node_at(self, position):
-        if position not in self._board:
-            return Node(WALL_CHAR, position, self)
-        return self._board[position]
+        return self._board.get(position)
 
+    @cached_property
     def get_nodes(self):
         return self._board.values()
 
     def remaining(self):
-        return set(self._board.keys()) - self.visited
+        return set(self._board.keys()) - self.visited - self.wall_positions
 
     def remaining_nodes(self) -> set["Node"]:
-        return {
-            self.node_at(position)
-            for position in self.remaining()
-            if self.node_at(position).valid()
-        }
+        return {self.node_at(position) for position in self.remaining()}
 
     def move(self, direction):
         if direction == UP_MOVE:
@@ -94,14 +105,63 @@ class Board:
             )
         else:
             return False
-
-        if self.node_at(new_position).valid():
+        node = self.node_at(new_position)
+        if node and node.valid:
             self.current_pos = self.node_at(new_position)
             self.visited.add(self.current_pos.position)
             self.moves.append(direction)
             return True
 
         return False
+
+    def move_to_node(self, node):
+        if node.position == self.current_pos.position:
+            return True
+
+        if node in self.current_pos.adjacent:
+            return self.move_to_node_adjacent(node)
+
+        return self.move_to_node_with_astar(node)
+
+    def move_to_node_adjacent(self, node):
+        if node.position == self.current_pos.position:
+            return True
+        x1, y1 = self.current_pos.position
+        x2, y2 = node.position
+        if x2 > x1:
+            self.move(DOWN_MOVE)
+        elif x2 < x1:
+            self.move(UP_MOVE)
+        elif y2 > y1:
+            self.move(RIGHT_MOVE)
+        elif y2 < y1:
+            self.move(LEFT_MOVE)
+
+            if self.display_moves:
+                clear_display()
+                self.display()
+                time.sleep(DISPLAY_SPEED)
+
+    def move_to_node_with_astar(self, node):
+        solver = LambdaSolver(self)
+        path = solver.astar(self.current_pos.position, node.position)
+        for i, step in enumerate(path):
+            x1, y1 = self.current_pos.position
+            x2, y2 = step
+            if x2 > x1:
+                self.move(DOWN_MOVE)
+            elif x2 < x1:
+                self.move(UP_MOVE)
+            elif y2 > y1:
+                self.move(RIGHT_MOVE)
+            elif y2 < y1:
+                self.move(LEFT_MOVE)
+
+            if self.display_moves:
+                clear_display()
+                self.display()
+                time.sleep(DISPLAY_SPEED)
+        return True
 
     def recompute(self):
         self._board = {
@@ -110,8 +170,80 @@ class Board:
             for j in range(self.width)
         }
 
-    def visited_nodes(self):
-        return {self.node_at(position) for position in self.visited}
+        for i in range(self.height):
+            for j in range(self.width):
+                node = self.node_at((i, j))
+                if node.valid:
+                    for neighbor in node.adjacent:
+                        self.add_edge(node, neighbor, 1)
+
+    def shortest_distances(self, source: str):
+        # Initialize the values of all nodes with infinity
+        distances = {node: float("inf") for node in self.graph}
+        distances[source] = 0  # Set the source value to 0
+
+        # Initialize a priority queue
+        pq = [(0, source)]
+        heapq.heapify(pq)
+
+        # Create a set to hold visited nodes
+        visited = set()
+
+        while pq:  # While the priority queue isn't empty
+            current_distance, current_node = heapq.heappop(pq)
+
+            if current_node in visited:
+                continue
+            visited.add(current_node)
+
+            for neighbor, weight in self.graph[current_node].items():
+                # Calculate the distance from current_node to the neighbor
+                tentative_distance = current_distance + weight
+                if tentative_distance < distances[neighbor]:
+                    distances[neighbor] = tentative_distance
+                    heapq.heappush(pq, (tentative_distance, neighbor))
+
+        predecessors = {node: None for node in self.graph}
+
+        for node, distance in distances.items():
+            for neighbor, weight in self.graph[node].items():
+                if distances[neighbor] == distance + weight:
+                    predecessors[neighbor] = node
+
+        return distances, predecessors
+
+    def nearest_unvisited(self, source: str) -> tuple["Node", int]:
+        distances, pre = self.shortest_distances(source)
+        unvisited = self.remaining()
+        nearest = min(unvisited, key=lambda node: distances[node])
+        return nearest, distances[nearest], (distances, pre)
+
+    def next_optimal_node(self, source: "Node") -> tuple["Node", int, tuple]:
+        nearest, distance, shortest_distances = self.nearest_unvisited(source)
+        return nearest, distance, shortest_distances
+
+    def shortest_path(
+        self, source: str, target: str, distances=None, predecessors=None
+    ):
+        # Generate the predecessors dict
+        if distances is None or predecessors is None:
+            distances, predecessors = self.shortest_distances(source)
+        else:
+            distances = distances
+            predecessors = predecessors
+
+        path = []
+        current_node = target
+
+        # Backtrack from the target node using predecessors
+        while current_node:
+            path.append(current_node)
+            current_node = predecessors[current_node]
+
+        # Reverse the path and return it
+        path.reverse()
+
+        return path
 
     def __len__(self):
         return len(self.board)
@@ -149,6 +281,8 @@ class Node:
         self.position = position
         self.board = board
 
+        self.display()
+
     def __eq__(self, other):
         if isinstance(other, Node):
             return self.position == other.position
@@ -162,6 +296,19 @@ class Node:
     def __repr__(self):
         return f"Node({self.position}, {self.char})"
 
+    def __lt__(self, other):
+        return self.position < other.position
+
+    def __gt__(self, other):
+        return self.position > other.position
+
+    def __le__(self, other):
+        return self.position <= other.position
+
+    def __ge__(self, other):
+        return self.position >= other.position
+
+    @cached_property
     def valid(self):
         row, col = self.position
         return (
@@ -185,16 +332,21 @@ class Node:
             (row, col + 1),
         ]
         nodes = [self.board.node_at(neighbor) for neighbor in neighbors]
-        valid_neighbors = [node for node in nodes if node.valid()]
+        valid_neighbors = [node for node in nodes if node is not None and node.valid]
         return valid_neighbors
 
+    @cached_property
     def to_position(self, node):
         return node.position
 
     def display(self):
-        if self.position == self.board.current_pos.position:
+        if (
+            self.board
+            and hasattr(self.board, "current_pos")
+            and self.position == self.board.current_pos.position
+        ):
             print(f"{bcolors.OKGREEN}{PLAYER_CHAR}{bcolors.ENDC}", end="")
-        elif self.position in self.board.visited:
+        elif hasattr(self.board, "visited") and self.position in self.board.visited:
             print(VISITED_CHAR, end="")
         elif self.char == WALL_CHAR:
             print(f"{bcolors.WARNING}{WALL_CHAR}{bcolors.ENDC}", end="")
@@ -227,62 +379,45 @@ class LambdaSolver(AStar):
         return [n.position for n in self.board.node_at(node).adjacent]
 
 
-def heuristic_cost_estimate(positionA, positionB):
-    return abs(positionA[0] - positionB[0]) + abs(positionA[1] - positionB[1])
+def dijkstra_pathfinding(board):
+    # Find the initial
 
+    while len(board.remaining_nodes()) > 0:
+        # Find the nearest unvisited node
+        node, distance, shortest_distances = board.next_optimal_node(board.current_pos)[
+            0
+        ]
+        path = board.shortest_path(
+            board.current_pos,
+            node,
+            distances=shortest_distances[0],
+            predecessors=shortest_distances[1],
+        )
+        for i, step in enumerate(path):
+            x1, y1 = board.current_pos.position
 
-def dijkstra_algorithm(board: Board, start_node):
-    unvisited_nodes = list(board.get_nodes())
+            x2, y2 = board.node_at(step).position
+            if x2 > x1:
+                board.move(DOWN_MOVE)
+            elif x2 < x1:
+                board.move(UP_MOVE)
+            elif y2 > y1:
+                board.move(RIGHT_MOVE)
+            elif y2 < y1:
+                board.move(LEFT_MOVE)
 
-    # We'll use this dict to save the cost of visiting each node and update it as we move along the graph
-    shortest_path = {}
-
-    # We'll use this dict to save the shortest known path to a node found so far
-    previous_nodes = {}
-
-    # We'll use max_value to initialize the "infinity" value of the unvisited nodes
-    max_value = sys.maxsize
-    for node in unvisited_nodes:
-        shortest_path[node] = max_value
-    # However, we initialize the starting node's value with 0
-    shortest_path[start_node] = 0
-
-    # The algorithm executes until we visit all nodes
-    while unvisited_nodes:
-        # The code block below finds the node with the lowest score
-        current_min_node = None
-        for node in unvisited_nodes:  # Iterate over the nodes
-            if current_min_node is None:
-                current_min_node = node
-            elif shortest_path[node] < shortest_path[current_min_node]:
-                current_min_node = node
-
-        # The code block below retrieves the current node's neighbors and updates their distances
-        neighbors = current_min_node.adjacent
-        for neighbor in neighbors:
-            tentative_value = shortest_path[current_min_node] + 1
-            if tentative_value < shortest_path[neighbor]:
-                shortest_path[neighbor] = tentative_value
-                # We also update the best path to the current node
-                previous_nodes[neighbor] = current_min_node
-
-        # After visiting its neighbors, we mark the node as "visited"
-        unvisited_nodes.remove(current_min_node)
-
-    return previous_nodes, shortest_path
+    return [], "".join(board.moves)
 
 
 def a_star_pathfinding(board):
-    solver = LambdaSolver(board)
     forks = []
-    last_position = board.current_pos
     while len(board.remaining_nodes()) > 0:
         neighbors = board.current_pos.adjacent
         remaining_neighbors = set(neighbors) & board.remaining_nodes()
         action = None
         if len(list(remaining_neighbors)) > 1:
             action = "fork_found"
-            next_position = random.choice(list(remaining_neighbors))
+            next_position = board.next_optimal_node(board.current_pos)[0]
             # Add all the other neighbors to the forks
             for neighbor in remaining_neighbors:
                 if neighbor != next_position:
@@ -308,50 +443,25 @@ def a_star_pathfinding(board):
         if not next_position:
             action = "no_neighbors"
 
-            # unvisited = dijkstra_algorithm(board, last_position)
-            # if unvisited:
-            #     import ipdb
+            next_position = board.next_optimal_node(board.current_pos)[0]
 
-            #     ipdb.set_trace()
-
-            #     unvisited[0]
-            #     print(
-            #         f"Closest unvisited node is at {next_position} with a distance of {distance}"
-            #     )
-            # else:
-            #     print("No more unvisited nodes")
+        if not next_position:
             next_position = random.choice(list(board.remaining_nodes()))
 
-        print("Starting Astar at:", action, last_position, next_position)
-
-        path = solver.astar(last_position.position, next_position.position)
-
-        for i, step in enumerate(path):
-            x1, y1 = last_position.position
-            x2, y2 = step
-            if x2 > x1:
-                board.move(DOWN_MOVE)
-            elif x2 < x1:
-                board.move(UP_MOVE)
-            elif y2 > y1:
-                board.move(RIGHT_MOVE)
-            elif y2 < y1:
-                board.move(LEFT_MOVE)
-            last_position = board.current_pos
+        print(f"Action: {action}", next_position)
+        if type(next_position) == tuple:
+            next_position = board.node_at(next_position)
+        board.move_to_node(next_position)
 
     return [], "".join(board.moves)
 
 
 def simulate_moves(board, moves, stdscr=None):
-    # Find the initial position of Lambda-Man
-    board.display()
-    time.sleep(1)
-    clear_display(stdscr)
     # Simulate each move
     for move in moves:
         board.move(move)
         board.display()
-        time.sleep(0.02)
+        time.sleep(DISPLAY_SPEED)
         clear_display(stdscr)
 
 
@@ -396,7 +506,9 @@ def main():
 
     # Find the path using A* algorithm
 
-    board = Board(board_strings, start_position=start, number=number)
+    board = Board(
+        board_strings, start_position=start, number=number, display=args.display
+    )
 
     if args.repl:
         move = None
@@ -418,14 +530,10 @@ def main():
         return
 
     path, moves = a_star_pathfinding(board)
+    # path, moves = dijkstra_pathfinding(board)
 
-    if args.display:
-        board = Board(board_strings, start_position=start, number=number)
-
-        simulate_moves(board, moves)
-    else:
-        print(f"Path length: {len(path)}")
-        print(f"Moves: {moves}")
+    print(f"Path length: {len(path)}")
+    print(f"Moves: {moves}")
 
     if args.submit:
         board.submit()
