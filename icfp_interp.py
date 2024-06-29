@@ -3,6 +3,9 @@
 import json
 from copy import deepcopy
 
+import sys
+sys.set_int_max_str_digits(0)
+
 def remainder(n, d):
     return (-1 if n < 0 else 1) * (abs(n) % abs(d))
 
@@ -25,7 +28,7 @@ class ICFP:
         self.base94_to_char = {idx: char for idx, char in enumerate(chars)}
 
         self.int_to_char = {idx: char for idx, char in enumerate(int_chars)}
-        self.char_to_int = {char: idx for idx, char in enumerate(int_chars)}
+        self.char_to_int = {char: int(idx) for idx, char in enumerate(int_chars)}
 
     def debug(self, msg):
         if self.debug_mode:
@@ -209,7 +212,7 @@ class ICFP:
         elif op == "/":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
-            return { "type": "integer", "value": int(left_value / right_value) }
+            return { "type": "integer", "value": left_value // right_value }
         elif op == "%":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
