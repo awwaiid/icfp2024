@@ -227,7 +227,9 @@ class ICFP:
                 return { "type": "boolean", "value": left_value == right_value }
             if left["type"] == "string" and right["type"] == "string":
                 return { "type": "boolean", "value": left_value == right_value }
-            raise ValueError(f"Expected integers or strings, got {left} and {right}")
+            if left["type"] == "boolean" and right["type"] == "boolean":
+                return { "type": "boolean", "value": left_value == right_value }
+            raise ValueError(f"Expected integers or strings or booleans, got {left} and {right}")
         elif op == "|":
             if left["type"] != "boolean" or right["type"] != "boolean":
                 raise ValueError(f"Expected boolean, got {left} and {right}")
