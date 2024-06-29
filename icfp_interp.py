@@ -9,6 +9,15 @@ sys.set_int_max_str_digits(0)
 def remainder(n, d):
     return (-1 if n < 0 else 1) * (abs(n) % abs(d))
 
+def integer_divide_toward_zero(a, b):
+    # Perform regular integer division
+    result = a // b
+    # Adjust the result if necessary
+    if (a < 0) != (b < 0) and a % b != 0:
+        result += 1
+    return result
+
+
 class ICFP:
     """
     The ICFP class is a parser for the ICFP programming language. It can encode and parse ICFP tokens.
@@ -212,7 +221,8 @@ class ICFP:
         elif op == "/":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
-            return { "type": "integer", "value": left_value // right_value }
+            # return { "type": "integer", "value": left_value // right_value }
+            return { "type": "integer", "value": integer_divide_toward_zero(left_value, right_value) }
         elif op == "%":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
