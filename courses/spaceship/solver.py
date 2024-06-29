@@ -32,8 +32,13 @@ if __name__ == "__main__":
                 print("Move:", end="")
                 while not player.all_clear:
                     print(".", end="")
+                    vel = tracker.get_current_velocity()
+                    if abs(vel[0]) > 3:
+                        print(f'VX{vel[0]}', end="") 
+                    if abs(vel[1]) > 3:
+                        print(f'VY{vel[1]}', end="") 
                     current = tracker.get_current_pos()
-                    closest = grid.get_closest(current)
+                    closest = grid.get_closest(current, tracker.get_current_velocity())
                     suggested = tracker.get_direction_to_position(closest)
                     player.move(suggested)
                     move_count = move_count + 1

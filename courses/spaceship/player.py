@@ -10,6 +10,9 @@ class PositionTracker:
 
     def get_current_pos(self):
         return (self.x, self.y)
+    
+    def get_current_velocity(self):
+        return self.v
 
     def update_velocity(self, dx, dy):
         #print(f"Updating Velocity by {dx}, {dy}")
@@ -56,24 +59,43 @@ class PositionTracker:
 
     def get_direction_to_position(self, destination):
         next_pos = PositionTracker.apply_vel_to_pos(self.get_current_pos(), self.v)
-        if destination[0] < next_pos[0]:
-            #slow down x
+        #print(next_pos)
+        #print(destination)
+        #print(self.v)
+        #print( destination[0] < next_pos[0])
+        #print(-1 * next_pos[0] - destination[0])
+
+        def calc_v_offset(pos,des):
+            return (pos - des)/2 
+
+
+
+
+        if destination[0] < next_pos[0] and self.v[0] > -2:
             new_v_x =  [7,4,1]
-        elif destination[0] > next_pos[0]:
+        elif destination[0] > next_pos[0] and self.v[0] < 2:
             new_v_x = [9,6,3]
         else:
             new_v_x = [8,5,2] 
-        if destination[1] < next_pos[1]:
-            #slow down y
+
+        #print('--')
+        #print(destination[1])
+        #print(next_pos[1])
+        #print(self.v[1] > -1 * (next_pos[1] - destination[1]))
+        if destination[1] < next_pos[1] and self.v[1] > -2:
             new_v_y = [1,2,3]
-        elif destination[1] > next_pos[1]:
+        elif destination[1] > next_pos[1] and self.v[1] < 2:
             new_v_y = [7,8,9]
         else:
             new_v_y = [4,5,6]
 
+        
         set1 = set(new_v_x)
         set2 = set(new_v_y)
+        #print(set1)
+        #print(set2)
         common_values = set1 & set2
+        #print(common_values)
         return next(iter(common_values))
 
 
@@ -108,14 +130,17 @@ class PositionMap:
     def all_visited(self):
         return not self.pending
     
+    def vel_multiplier(v):  
+        return (v) / 2
 
-    def get_closest(self, pos):
+    def get_closest(self, pos, vel=[0,0]):
         if not self.pending:
             return None
-    
-        #print(self.pending)
+        vx_mult = PositionMap.vel_multiplier(vel[0])
+        vy_mult = PositionMap.vel_multiplier(vel[1])
+        vx_mult = vy_mult = 0
+        pos = (pos[0] + vx_mult, pos[1] + vy_mult)
         nearest_position = self.pending[0]
-        #print(nearest_position)
         min_distance = math.dist(pos, nearest_position)
         
         for position in self.pending[1:]:
@@ -137,11 +162,122 @@ class Player:
     def __init__(self, tracker, grid):
         self.tracker = tracker
         self.grid = grid
-        self.map_data = """1 -1
-1 -3
-2 -5
-2 -8
-3 -10
+        self.map_data = """-3 2
+-5 4
+-7 5
+-8 6
+-9 6
+-10 7
+-10 7
+-11 8
+-13 9
+-14 11
+-14 14
+-14 17
+-13 19
+-12 22
+-12 25
+-11 28
+-10 30
+-10 33
+-9 37
+-7 41
+-5 46
+-3 50
+0 54
+3 57
+7 59
+10 62
+12 64
+13 66
+14 67
+16 67
+18 68
+19 68
+20 67
+22 67
+23 66
+25 64
+28 63
+32 63
+37 64
+41 64
+44 64
+48 64
+53 63
+59 63
+64 63
+70 62
+76 62
+83 62
+89 62
+95 61
+102 60
+108 60
+113 59
+118 59
+123 59
+129 60
+135 60
+140 59
+144 59
+148 59
+152 58
+157 58
+161 57
+164 55
+166 54
+169 53
+172 51
+174 48
+176 45
+178 43
+181 42
+182 43
+182 44
+182 44
+182 44
+182 45
+181 47
+179 48
+177 50
+176 51
+175 51
+175 52
+174 53
+172 53
+171 54
+170 55
+170 57
+171 59
+173 61
+174 63
+176 64
+179 64
+182 65
+184 66
+187 68
+190 70
+194 72
+201 75
+205 77
+208 80
+210 84
+211 88
+212 93
+214 97
+216 102
+217 108
+217 114
+217 120
+216 126
+216 132
+217 139
+219 145
+220 150
+221 155
+221 161
+220 166
 """         
         grid.import_positions(self.map_data)
         self.keylookup = {
@@ -182,11 +318,20 @@ class Player:
                 self.all_clear = True
 
 
+def read_positions_from_file(filename):    
+    with open(filename, 'r') as file:
+        content = file.read()
+    return content
+
 if __name__ == "__main__":
     tracker = PositionTracker()
     print("Starting position and velocity: (0, 0)")
     pos_map = PositionMap()
     player = Player(tracker, pos_map)
+    problem = input("what problem?")
+    if (int(problem)):
+        problem_map = read_positions_from_file(f"./courses/spaceship/problems/{problem}.txt")
+        player.import_map_data(problem_map)
 
     while True:
         current = tracker.get_current_pos()
