@@ -7,9 +7,10 @@ def icfp():
     return ICFP()
 
 def assert_interp(icfp, input, expected_output):
-    result, rest = icfp.interp_from_string(input)
-    assert result == expected_output
-    assert rest == []
+    result = icfp.interp_from_string(input)
+    print(f"result: {result}")
+    value = result["value"]
+    assert value == expected_output
 
 def test_basic_boolean(icfp):
     assert_interp(icfp, "T", True)
@@ -63,7 +64,12 @@ def test_basic_binop(icfp):
     assert_interp(icfp, "B. S4% S34", "test")
     assert_interp(icfp, "BT I$ S4%34", "tes")
     assert_interp(icfp, "BD I$ S4%34", "t")
-    # assert_interp(icfp, "B$ U- I( I#", -1337)
 
+def test_basic_apply(icfp):
+    assert_interp(icfp, "B$ L\" v\" B- I( I#", 5)
+    assert_interp(icfp, "B$ B$ L# L$ v# B. SB%,,/ S}Q/2,$_ IK", "Hello World!")
+    assert_interp(icfp, "B$ L# B$ L\" B+ v\" v\" B* I$ I# v8", 12)
 
-
+def test_conditional(icfp):
+    assert_interp(icfp, "? T I$ I#", 3)
+    assert_interp(icfp, "? F I$ I#", 2)

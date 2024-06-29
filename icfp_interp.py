@@ -7,16 +7,16 @@ def remainder(n, d):
 
 class ICFP:
     """
-    The ICFP class is a parser for the ICFP programming language. It can encode and decode ICFP tokens.
+    The ICFP class is a parser for the ICFP programming language. It can encode and parse ICFP tokens.
 
 
     Example usage:
-        echo 'SB%,,/}Q/2,$_' | python icfp_parser.py --decode
+        echo 'SB%,,/}Q/2,$_' | python icfp_parser.py --parse
 
     """
 
     def __init__(self):
-        self.debug_mode = False
+        self.debug_mode = True
 
         chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n"
         int_chars = ''.join(chr(i) for i in range(33, 127))  # ASCII characters from 33 to 126
@@ -30,78 +30,84 @@ class ICFP:
         if self.debug_mode:
             print(msg)
 
-    def encode_boolean(self, value):
-        return "T" if value else "F"
+    def encode_boolean(self, ast):
+        return "T" if ast["value"] else "F"
 
-    def decode_boolean(self, token, tokens):
-        return { "boolean": (token == "T") }, tokens
+    def parse_boolean(self, token, tokens):
+        return { "type": "boolean", "value": (token == "T") }, tokens
 
-    def interp_boolean(self, token, tokens):
-        return (token == "T"), tokens
+    def interp_boolean(self, ast, env):
+        return ast
 
-    def encode_integer(self, value):
-        base94 = self.to_base94(value)
+    def encode_integer(self, ast):
+        base94 = self.to_base94(ast["value"])
         return "I" + base94
 
-    def decode_integer(self, token, tokens):
+    def parse_integer(self, token, tokens):
         base94 = token[1:]
-        return { "integer": self.from_base94(base94) }, tokens
+        return { "type": "integer", "value": self.from_base94(base94) }, tokens
 
-    def interp_integer(self, token, tokens):
-        base94 = token[1:]
-        return self.from_base94(base94), tokens
+    def interp_integer(self, ast, env):
+        return ast
 
-    def encode_string(self, value):
+    def encode_string(self, ast):
+        value = ast["value"]
         encoded_body = ''.join(chr(self.char_to_base94[char] + 33) for char in value)
         return "S" + encoded_body
 
-    def raw_decode_string(self, token):
+    def raw_parse_string(self, token):
         encoded_body = token[1:]
         return ''.join(self.base94_to_char[ord(char) - 33] for char in encoded_body)
 
-    def decode_string(self, token, tokens):
+    def parse_string(self, token, tokens):
         encoded_body = token[1:]
-        return { "string": ''.join(self.base94_to_char[ord(char) - 33] for char in encoded_body) }, tokens
+        return { "type": "string", "value": ''.join(self.base94_to_char[ord(char) - 33] for char in encoded_body) }, tokens
 
-    def interp_string(self, token, tokens):
-        encoded_body = token[1:]
-        return (''.join(self.base94_to_char[ord(char) - 33] for char in encoded_body)), tokens
+    def interp_string(self, ast, env):
+        return ast
 
-    def encode_unary_operator(self, op, operand):
+    def encode_unary_operator(self, ast):
+        op = ast["op"]
+        operand = ast["left"]
         return f"U{op} {self.encode(operand)}"
 
-    def decode_unary_operator(self, op, tokens):
-        operand, tokens = self.decode(tokens)
-        return { "unary": op, "operand": operand }, tokens
+    def parse_unary_operator(self, op, tokens):
+        op = op[1:]
+        operand, tokens = self.parse(tokens)
+        return { "type": "unary", "op": op, "left": operand }, tokens
 
-    def interp_unary_operator(self, token, tokens):
-        op = token[1:]
-        operand, tokens = self.interp(tokens)
+    def interp_unary_operator(self, ast, env):
+        op = ast["op"]
+        operand = self.interp(ast["left"], env)
+        operand_value = operand["value"]
 
         if op == '-':
-            return -operand, tokens
+            return { "type": "integer", "value": -operand_value }
         elif op == '!':
-            return not operand, tokens
+            return { "type": "boolean", "value": not operand_value }
         elif op == '#':
             operand = self.encode_string(operand)
             operand = operand[1:]
-            return self.from_base94(operand), tokens
+            return { "type": "integer", "value": self.from_base94(operand) }
         elif op == '$':
             operand = self.encode_integer(operand)
             operand = operand[1:]
             operand = "S" + operand
-            return self.raw_decode_string(operand), tokens
+            return { "type": "string", "value": self.raw_parse_string(operand) }
         else:
             raise ValueError(f"Unknown unary operator: {op}")
 
-    def encode_binary_operator(self, op, left, right):
+    def encode_binary_operator(self, ast):
+        op = ast["op"]
+        left = ast["left"]
+        right = ast["right"]
         return f"B{op} {self.encode(left)} {self.encode(right)}"
 
-    def decode_binary_operator(self, token, tokens):
+    def parse_binary_operator(self, token, tokens):
         op = token[1:]
-        left, tokens = self.decode(tokens)
-        right, tokens = self.decode(tokens)
-        return { "binary": op, "left": left, "right": right }, tokens
+        left, tokens = self.parse(tokens)
+        right, tokens = self.parse(tokens)
+        return { "type": "binop", "op": op, "left": left, "right": right }, tokens
 
     # +	Integer addition	B+ I# I$ -> 5
     # -	Integer subtraction	B- I$ I# -> 1
@@ -117,52 +123,90 @@ class ICFP:
     # T	Take first x chars of string y	BT I$ S4%34 -> "tes"
     # D	Drop first x chars of string y	BD I$ S4%34 -> "t"
     # $	Apply term x to y (see Lambda abstractions)
-    def interp_binary_operator(self, token, tokens):
-        op = token[1:]
-        left, tokens = self.interp(tokens)
-        right, tokens = self.interp(tokens)
+    def interp_binary_operator(self, ast, env):
+        op = ast["op"]
+
+        if op == "$":
+            # Left is a lambda, right is a value
+            lambda_ast = self.interp(ast["left"], env)
+            lambda_var = lambda_ast["var"]
+            lambda_body = lambda_ast["body"]
+            arg = ast["right"]
+            # env = env.copy()
+            env[lambda_var] = arg
+            # print(f"apply -> (v{lambda_var}. {json.dumps(lambda_ast)}) {json.dumps(arg)}\nENV: {json.dumps(env)}")
+            result = self.interp(lambda_body, env)
+            return result
+
+        left = self.interp(ast["left"], env)
+        right = self.interp(ast["right"], env)
+        left_value = left["value"]
+        right_value = right["value"]
 
         if op == "+":
-            return left + right, tokens
+            return { "type": "integer", "value": left_value + right_value }
         elif op == "-":
-            return left - right, tokens
+            return { "type": "integer", "value": left_value - right_value }
         elif op == "*":
-            return left * right, tokens
+            return { "type": "integer", "value": left_value * right_value }
         elif op == "/":
-            return int(left / right), tokens
+            return { "type": "integer", "value": int(left_value / right_value) }
         elif op == "%":
-            return remainder(left, right), tokens
+            return { "type": "integer", "value": remainder(left_value, right_value) }
         elif op == "<":
-            return left < right, tokens
+            return { "type": "boolean", "value": left_value < right_value }
         elif op == ">":
-            return left > right, tokens
+            return { "type": "boolean", "value": left_value > right_value }
         elif op == "=":
-            return left == right, tokens
+            return { "type": "boolean", "value": left_value == right_value }
         elif op == "|":
-            return left or right, tokens
+            return { "type": "boolean", "value": left_value or right_value }
         elif op == "&":
-            return left and right, tokens
+            return { "type": "boolean", "value": left_value and right_value }
         elif op == ".":
-            return left + right, tokens
+            return { "type": "string", "value": left_value + right_value }
         elif op == "T":
-            return right[:left], tokens
+            return { "type": "string", "value": right_value[:left_value] }
         elif op == "D":
-            return right[left:], tokens
-        elif op == "$":
-            # .... TODO
-            pass
+            return { "type": "string", "value": right_value[left_value:] }
         else:
             raise ValueError(f"Unknown binary operator: {op}")
 
-    def decode_lambda(self, token, tokens):
-        body = token[1:]
-        var_num = self.from_base94(body)
-        return { "lambda": var_num }, tokens
+    def parse_lambda(self, token, tokens):
+        param = token[1:]
+        var_num = self.from_base94(param)
+        body, tokens = self.parse(tokens)
+        return { "type": "lambda", "var": var_num, "body": body }, tokens
 
-    def decode_variable(self, token, tokens):
+    def interp_lambda(self, ast, env):
+        return ast
+
+    def parse_variable(self, token, tokens):
         body = token[1:]
         var_num = self.from_base94(body)
-        return { "var": var_num }, tokens
+        return { "type": "var", "var": var_num }, tokens
+
+    def interp_variable(self, ast, env):
+        return env[ast["var"]]
+
+    def encode_variable(self, ast):
+        return f"v{self.to_base94(ast['var'])}"
+
+    def parse_if(self, token, tokens):
+        condition, tokens = self.parse(tokens)
+        true_branch, tokens = self.parse(tokens)
+        false_branch, tokens = self.parse(tokens)
+        return { "type": "if", "condition": condition, "true": true_branch, "false": false_branch }, tokens
+
+    def encode_if(self, ast):
+        return f"? {self.encode(ast['condition'])} {self.encode(ast['true'])} {self.encode(ast['false'])}"
+
+    def interp_if(self, ast, env):
+        condition = self.interp(ast["condition"], env)
+        if condition["value"]:
+            return self.interp(ast["true"], env)
+        else:
+            return self.interp(ast["false"], env)
 
     def to_base94(self, value):
         if value == 0:
@@ -179,73 +223,92 @@ class ICFP:
             value = value * 94 + self.char_to_int[char]
         return value
 
-
-    def encode(self, value, op=None):
-        if op is not None:
-            if isinstance(value, str):
-                return self.encode_unary_operator(op, value)
-            elif isinstance(value, tuple):
-                return self.encode_binary_operator(op, value[0], value[1])
-            else:
-                raise ValueError("Unsupported type")
-        if isinstance(value, bool):
-            return self.encode_boolean(value)
-        elif isinstance(value, int):
-            return self.encode_integer(value)
-        elif isinstance(value, str):
-            return self.encode_string(value)
+    def encode(self, ast):
+        if ast["type"] == "string":
+            return self.encode_string(ast)
+        elif ast["type"] == "integer":
+            return self.encode_integer(ast)
+        elif ast["type"] == "boolean":
+            return self.encode_boolean(ast)
+        elif ast["type"] == "unary":
+            return self.encode_unary_operator(ast)
+        elif ast["type"] == "binop":
+            return self.encode_binary_operator(ast)
+        elif ast["type"] == "lambda":
+            return self.encode_lambda(ast)
+        elif ast["type"] == "var":
+            return self.encode_variable(ast)
+        elif ast["type"] == "if":
+            return self.encode_if(ast)
         else:
-            raise ValueError("Unsupported type")
+            raise ValueError(f"Unknown type: {ast['type']}")
 
-    def decode(self, tokens):
+    def parse(self, tokens):
         if len(tokens) == 0:
             return [], tokens
         token = tokens.pop(0)
         if token.startswith("T") or token.startswith("F"):
-            return self.decode_boolean(token, tokens)
+            return self.parse_boolean(token, tokens)
         elif token.startswith("I"):
-            return self.decode_integer(token, tokens)
+            return self.parse_integer(token, tokens)
         elif token.startswith("S"):
-            return self.decode_string(token, tokens)
+            return self.parse_string(token, tokens)
         elif token.startswith("U"):
-            return self.decode_unary_operator(token, tokens)
+            return self.parse_unary_operator(token, tokens)
         elif token.startswith("B"):
-            return self.decode_binary_operator(token, tokens)
+            return self.parse_binary_operator(token, tokens)
         elif token.startswith("L"):
-            return self.decode_lambda(token, tokens)
+            return self.parse_lambda(token, tokens)
         elif token.startswith("v"):
-            return self.decode_variable(token, tokens)
+            return self.parse_variable(token, tokens)
+        elif token.startswith("?"):
+            return self.parse_if(token, tokens)
         else:
             raise ValueError(f"Unknown token type: {token}")
 
-    def interp(self, tokens):
-        self.debug(f"interp: {tokens}")
-        if len(tokens) == 0:
-            return [], tokens
-        token = tokens.pop(0)
-        if token.startswith("T") or token.startswith("F"):
-            return self.interp_boolean(token, tokens)
-        elif token.startswith("I"):
-            return self.interp_integer(token, tokens)
-        elif token.startswith("S"):
-            return self.interp_string(token, tokens)
-        elif token.startswith("U"):
-            return self.interp_unary_operator(token, tokens)
-        elif token.startswith("B"):
-            return self.interp_binary_operator(token, tokens)
+    def interp(self, ast, env = {}):
+        # env = env.copy()
+        env["depth"] = env.get("depth", 0) + 1
+        # self.debug(f"{env['depth'] * 2 * ' '}env: {json.dumps(env)}")
+        # self.debug(f"{env['depth'] * 2 * ' '}interp: {json.dumps(ast)}")
+
+        result = None
+        if ast["type"] == "boolean":
+            result = self.interp_boolean(ast, env)
+        elif ast["type"] == "integer":
+            result = self.interp_integer(ast, env)
+        elif ast["type"] == "string":
+            result = self.interp_string(ast, env)
+        elif ast["type"] == "unary":
+            result = self.interp_unary_operator(ast, env)
+        elif ast["type"] == "binop":
+            result = self.interp_binary_operator(ast, env)
+        elif ast["type"] == "lambda":
+            result = self.interp_lambda(ast, env)
+        elif ast["type"] == "var":
+            result = self.interp_variable(ast, env)
+        elif ast["type"] == "if":
+            result = self.interp_if(ast, env)
         else:
-            raise ValueError(f"Unknown token type for token: {token}")
+            raise ValueError(f"Unknown type: {ast['type']}")
+
+        while result["type"] != "string" and result["type"] != "integer" and result["type"] != "boolean" and result["type"] != "lambda" and result["type"] != "var":
+            result = self.interp(result, env)
+
+        # self.debug(f"{env['depth'] * 2 * ' '}result: {json.dumps(result)}")
+        return result
 
     def interp_from_string(self, input):
-        self.debug(f"interp_from_string: {input}")
-        return self.interp(input.split(' '))
+        ast, _ = self.parse(input.split(' '))
+        # print("Parse: ", json.dumps(ast))
+        return self.interp(ast)
 
 if __name__ == "__main__":
-  #  Handle PIPED input and a --encode or --decode flag
+  #  Handle PIPED input and a --encode or --parse flag
   import argparse
   parser = argparse.ArgumentParser()
   parser.add_argument("--encode", action="store_true")
-  parser.add_argument("--decode", action="store_true")
+  parser.add_argument("--parse", action="store_true")
   parser.add_argument("--interp", action="store_true")
   parser.add_argument("--debug", action="store_true")
   args = parser.parse_args()
@@ -256,16 +319,17 @@ if __name__ == "__main__":
       icfp.debug_mode = True
 
   if args.interp:
-      result, _ = icfp.interp_from_string(input())
+      result = icfp.interp_from_string(input())
       if args.encode:
           print(icfp.encode(result))
       else:
           print(result)
   elif args.encode:
       print(icfp.encode(input()))
-  elif args.decode:
-      print(json.dumps(icfp.decode(input().split(' '))))
+  elif args.parse:
+      ast, _ = icfp.parse(input().split(' '))
+      print(json.dumps(ast))
       # print(icfp.encode(result))
   else:
-      print("Please specify --encode or --decode")
+      print("Please specify --encode or --parse")
       exit(1)
