@@ -31,7 +31,7 @@ def main():
 
             # with open(f"courses/{normalize_prompt}.txt", "w") as f:
             #     f.write(decoded)
-            print(result["value"])
+            print(result)
         except Exception as e:
             response = str(e)
             error = True

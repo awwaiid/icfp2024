@@ -17,4 +17,4 @@ class Client:
         # print(f"raw response: {response.text}")
         result = icfp.interp_from_string(response.text)
 
-        return response, result
+        return response, result["value"]
