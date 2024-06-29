@@ -3,7 +3,6 @@
 
 import sys
 import os
-from subprocess import Popen, PIPE, STDOUT
 from client import Client
 
 client = Client()
@@ -25,14 +24,14 @@ def main():
         # print(f"english: {english}")
         # Send this to the stdin of the encoder
         try:
-            response, decoded = client.call(english)
+            response, result = client.call(english)
             os.makedirs("courses", exist_ok=True)
             # write the response to a file
-            normalize_prompt = english.replace(" ", "_")
+            # normalize_prompt = english.replace(" ", "_")
 
             # with open(f"courses/{normalize_prompt}.txt", "w") as f:
             #     f.write(decoded)
-            print(f"{decoded}")
+            print(result["value"])
         except Exception as e:
             response = str(e)
             error = True

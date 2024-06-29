@@ -50,10 +50,13 @@ class ICFP:
     def interp_integer(self, ast, env):
         return ast
 
-    def encode_string(self, ast):
-        value = ast["value"]
+    def raw_encode_string(self, value):
         encoded_body = ''.join(chr(self.char_to_base94[char] + 33) for char in value)
         return "S" + encoded_body
+
+    def encode_string(self, ast):
+        value = ast["value"]
+        return self.raw_encode_string(value)
 
     def raw_parse_string(self, token):
         encoded_body = token[1:]
@@ -325,7 +328,7 @@ if __name__ == "__main__":
       else:
           print(result)
   elif args.encode:
-      print(icfp.encode(input()))
+      print(icfp.raw_encode_string(input()))
   elif args.parse:
       ast, _ = icfp.parse(input().split(' '))
       print(json.dumps(ast))

@@ -1,6 +1,6 @@
 import requests
 
-from icfp_parser import ICFP
+from icfp_interp import ICFP
 
 
 class Client:
@@ -9,8 +9,8 @@ class Client:
 
     def call(self, prompt):
         icfp = ICFP()
-        encoded_prompt = icfp.encode(prompt)
+        encoded_prompt = icfp.raw_encode_string(prompt)
         response = requests.post(self.url, headers=self.headers, data=encoded_prompt)
-        decoded_response = icfp.decode(response.text)
+        result = icfp.interp_from_string(response.text)
 
-        return response, decoded_response
+        return response, result
