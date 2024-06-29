@@ -5,7 +5,7 @@ from copy import deepcopy
 
 import sys
 sys.set_int_max_str_digits(0)
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(100000)
 
 def remainder(n, d):
     return (-1 if n < 0 else 1) * (abs(n) % abs(d))
