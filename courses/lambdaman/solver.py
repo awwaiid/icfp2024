@@ -101,30 +101,47 @@ def a_star_pathfinding(board, start):
         ]
     )
     visited.add(start)
-    forks = set()
+    forks = []
 
     while remaining := valid_pos - visited:
         neighbors = get_neighbors(board, last_position)
         remaining_neighbors = set(neighbors) & remaining
-
+        action = None
         if len(list(remaining_neighbors)) > 1:
-            next_position = sorted_positions(neighbors, last_position).pop()
+            action = "fork_found"
+            next_position = sorted_positions(remaining_neighbors, last_position).pop()
             # Add all the other neighbors to the forks
-            for neighbor in neighbors:
+            for neighbor in remaining_neighbors:
                 if neighbor != next_position:
-                    forks.add(neighbor)
+                    forks.append(neighbor)
+
+                    # ensure forks are unique
+                    forks = list(set(forks))
         elif len(remaining_neighbors) == 1:
+            action = "1_neighbor"
             next_position = remaining_neighbors.pop()
+
         # If there are no remaining neighbors, go back to the last fork
         elif forks:
-            next_position = forks.pop()
+            action = "backtrack"
+            # find the most recent fork, that has not been visited
 
-            # remove all forks of the same value
-            # forks = [fork for fork in forks if fork != next_position]
+            next_position = None
+            for fork in forks[::-1]:
+                if fork not in visited:
+                    next_position = fork
+                    break
+
+            if not next_position:
+                forks = []
+                next_position = remaining.pop()
+
         else:
+            action = "no_neighbors"
             next_position = remaining.pop()
 
-        # print("Starting Astar at:", last_position, next_position)
+        print("Starting Astar at:", action, last_position, next_position)
+
         path = solver.astar(last_position, next_position)
         for i, step in enumerate(path):
             x1, y1 = last_position
