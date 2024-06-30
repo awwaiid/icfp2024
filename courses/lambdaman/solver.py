@@ -306,6 +306,7 @@ class Board:
         neighbors = current.adjacent
         remaining_neighbors = set(neighbors) & self.remaining_nodes()
         # action = None
+        next_position = None
         if len(list(remaining_neighbors)) > 1:
             # action = "fork_found"
             next_position = self.next_optimal_node(current)[0]
@@ -314,15 +315,13 @@ class Board:
             # action = "1_neighbor"
             next_position = remaining_neighbors.pop()
 
+        if not next_position:
+            # action = "no_optimal"
+            next_position = self.nearest_unvisited(current)[0]
         if current.position == next_position:
             # action = "no_neighbors"
 
             next_position = self.nearest_unvisited(current)[0]
-
-        if not next_position:
-            # action = "no_optimal"
-            next_position = self.nearest_unvisited(current)[0]
-
         if not next_position:
             # action = "no_next"
             exit(0)
@@ -654,13 +653,20 @@ def main(stdscr=None):
                 move = "R"
             elif key == "\x1b[D":  # Left arrow
                 move = "L"
-            elif key == "q":  # Exit on 'q'
+            elif key == "a":  # auto
+                board.display_moves = True
+                board.solve()
+                key = get_key()
+
+            if key == "q":  # Exit on 'q'
                 break
 
-            elif key == "s":
+            if key == "s":
                 board.submit()
-                break
-            board.move(move.upper())
+                print("Moves:", "".join(board.moves))
+                exit
+            if move:
+                board.move(move.upper())
             clear_display()
 
         board.display()
