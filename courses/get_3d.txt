@@ -253,6 +253,14 @@ test 3d 1 2
 . . . . .
 ```
 
+```
+test 3d 3 5
+. A .
+B + S
+. . .
+```
+
+
 where `A` and `B` must be integer values which are given to the corresponding inputs. Unlike the `solve` command, the `test` command has a tick limit of `4`.
 
 ```
