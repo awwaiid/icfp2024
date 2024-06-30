@@ -9,6 +9,7 @@ import sys
 import time
 from astar import AStar
 import pprint
+from collections import deque
 
 # Append the root directory to the sys.path
 # expanded_path = os.expandPath(__file__)
@@ -106,12 +107,13 @@ class Board:
             )
         else:
             return False
+
         node = self.node_at(new_position)
         if node and node.valid:
             self.current_pos = self.node_at(new_position)
             self.visited.add(self.current_pos.position)
-            self.moves.append(direction)
             node.visits += 1
+            self.moves.append(direction)
             return True
 
         return False
@@ -142,7 +144,7 @@ class Board:
             if self.display_moves:
                 clear_display()
                 self.display()
-                time.sleep(DISPLAY_SPEED)
+                # time.sleep(DISPLAY_SPEED)
 
     def move_to_node_with_astar(self, node):
         solver = LambdaSolver(self)
@@ -332,10 +334,63 @@ class Board:
 
         return next_position
 
+    def determine_via_shortest_dist_tsp_path(self):
+        shortest_distances, _ = self.current_pos.costs
+
+        # sort the remaining nodes by the shortest distance
+
+        tsp_graph = {}
+        path = []
+        # Build a graph where all nodes are connected to the start node
+        for node in self.remaining_nodes():
+            tsp_graph[node] = shortest_distances[node]
+
+        # Preform a Travelling Salesman Problem
+        # Find the minimum path that visits all the nodes
+        # Find the nearest node to the start node
+        current = self.current_pos
+        # Local TSP graph limit
+        LIMIT = 5
+        while len(tsp_graph) > 0 and len(path) < LIMIT:
+            nearest = min(tsp_graph, key=tsp_graph.get)
+            path.append((nearest, tsp_graph[nearest]))
+            del tsp_graph[nearest]
+            current = nearest
+            for node in tsp_graph:
+                if node == current:
+                    continue
+                tsp_graph[node] = min(
+                    tsp_graph[node],
+                    shortest_distances[current]
+                    + shortest_distances[node]
+                    - shortest_distances[current],
+                )
+
+        return path
+
     def solve(self):
+        path = self.determine_via_shortest_dist_tsp_path()
+
         while len(self.remaining_nodes()) > 0:
-            next_position = self.next_move()
-            self.move_to_node(next_position)
+            # Remove the first node from the path
+            step, dist = path.pop(0)
+            print(f"Step {len(self.moves)}:", step, dist)
+            if step in self.visited:
+                continue
+            self.move_to_node(step)
+
+            # Recalculate the path
+            path = self.determine_via_shortest_dist_tsp_path()
+
+            # if self.display_moves:
+            # clear_display()
+            # self.display()
+            # time.sleep(DISPLAY_SPEED
+
+    # def solve(self):
+    #     while len(self.remaining_nodes()) > 0:
+    #         next_position = self.next_move()
+    #         self.move_to_node(next_position)
 
 
 class Node:
