@@ -301,6 +301,43 @@ class Board:
 
         print(f"Response: {decoded}")
 
+    def next_move(self):
+        current = self.current_pos
+        neighbors = current.adjacent
+        remaining_neighbors = set(neighbors) & self.remaining_nodes()
+        # action = None
+        if len(list(remaining_neighbors)) > 1:
+            # action = "fork_found"
+            next_position = self.next_optimal_node(current)[0]
+
+        elif len(remaining_neighbors) == 1:
+            # action = "1_neighbor"
+            next_position = remaining_neighbors.pop()
+
+        if current.position == next_position:
+            # action = "no_neighbors"
+
+            next_position = self.nearest_unvisited(current)[0]
+
+        if not next_position:
+            # action = "no_optimal"
+            next_position = self.nearest_unvisited(current)[0]
+
+        if not next_position:
+            # action = "no_next"
+            exit(0)
+
+        # print(f"Action: {action}", next_position)
+        if type(next_position) == tuple:
+            next_position = self.node_at(next_position)
+
+        return next_position
+
+    def solve(self):
+        while len(self.remaining_nodes()) > 0:
+            next_position = self.next_move()
+            self.move_to_node(next_position)
+
 
 class Node:
     def __init__(
@@ -593,7 +630,7 @@ def main(stdscr=None):
             for node in board.current_pos.adjacent:
                 x1, y1 = board.current_pos.position
                 x2, y2 = node.position
-                if node == board.next_optimal_node(board.current_pos)[0]:
+                if node == board.next_move():
                     print(bcolors.OKGREEN)
 
                 if x2 > x1:
@@ -630,11 +667,7 @@ def main(stdscr=None):
         print("Moves:", "".join(board.moves))
         return
 
-    path, moves = a_star_pathfinding(board)
-    # path, moves = dijkstra_pathfinding(board)
-
-    print(f"Path length: {len(path)}")
-    print(f"Moves: {moves}")
+    board.solve()
 
     if args.submit:
         board.submit()
