@@ -17,8 +17,9 @@ sys.path.append(str(BASE_DIR))
 
 from icfp_client import ICFPClient
 
+sys.setrecursionlimit(200000)
 
-DISPLAY_SPEED = 0.02
+DISPLAY_SPEED = 0.05
 
 
 class bcolors:
@@ -110,6 +111,7 @@ class Board:
             self.current_pos = self.node_at(new_position)
             self.visited.add(self.current_pos.position)
             self.moves.append(direction)
+            node.visits += 1
             return True
 
         return False
@@ -213,22 +215,51 @@ class Board:
         return distances, predecessors
 
     def nearest_unvisited(self, source: str) -> tuple["Node", int]:
-        distances, pre = self.shortest_distances(source)
+        distances, pre = source.costs
         unvisited = self.remaining()
         nearest = min(unvisited, key=lambda node: distances[node])
         return nearest, distances[nearest], (distances, pre)
 
-    def next_optimal_node(self, source: "Node") -> tuple["Node", int, tuple]:
-        nearest, distance, shortest_distances = self.nearest_unvisited(source)
+    def count_branchs(self, source: str, count=0):
+        visited = set([source])
 
-        return nearest, distance, shortest_distances
+        def dfs(node):
+            nonlocal count
+            visited.add(node)
+            for neighbor in node.adjacent:
+                if neighbor not in visited:
+                    count += 1
+                    dfs(neighbor)
+
+        dfs(source)
+        return count
+
+    def next_optimal_node_by_branch(self, source: "Node") -> tuple["Node", int, tuple]:
+        neighbors = source.adjacent
+
+        best_node = None
+        for neighbor in neighbors:
+            if best_node is None:
+                best_node = neighbor
+                continue
+
+            if neighbor.total_branch_count() < best_node.total_branch_count():
+                best_node = neighbor
+
+        return best_node, best_node.total_cost, best_node.costs
+
+    def next_optimal_node(self, source: "Node") -> tuple["Node", int, tuple]:
+        distances, pre = source.costs
+        unvisited = self.remaining()
+        nearest = min(unvisited, key=lambda node: distances[node])
+        return nearest, distances[nearest], (distances, pre)
 
     def shortest_path(
         self, source: str, target: str, distances=None, predecessors=None
     ):
         # Generate the predecessors dict
         if distances is None or predecessors is None:
-            distances, predecessors = self.shortest_distances(source)
+            distances, predecessors = source.costs
         else:
             distances = distances
             predecessors = predecessors
@@ -284,6 +315,8 @@ class Node:
 
         self.display()
 
+        self.visits = 0
+
     def __eq__(self, other):
         if isinstance(other, Node):
             return self.position == other.position
@@ -295,7 +328,7 @@ class Node:
         return hash(self.position)
 
     def __repr__(self):
-        return f"Node({self.position}, {self.char})"
+        return f"N({self.position}, v{self.visits} {self.total_cost}) "
 
     def __lt__(self, other):
         return self.position < other.position
@@ -308,6 +341,9 @@ class Node:
 
     def __ge__(self, other):
         return self.position >= other.position
+
+    def total_branch_count(self):
+        return self.board.count_branchs(self)
 
     @cached_property
     def valid(self):
@@ -322,6 +358,22 @@ class Node:
 
     def visited(self):
         return self.board.visited(self.position)
+
+    @cached_property
+    def raw_costs(self):
+        return self.board.shortest_distances(self)
+
+    @property
+    def costs(self):
+        """Return the shortest distances and predecessors from this node to all other nodes in the graph BUT adds weight to previously visited nodes"""
+        distances, predecessors = self.raw_costs
+        for node in self.board.visited:
+            distances[node] += self.board.node_at(node).visits + 1
+        return distances, predecessors
+
+    @property
+    def total_cost(self):
+        return sum(self.costs[0].values())
 
     @cached_property
     def adjacent(self):
@@ -380,7 +432,7 @@ class LambdaSolver(AStar):
         return [n.position for n in self.board.node_at(node).adjacent]
 
 
-def dijkstra_pathfinding(board):
+def dijkstra_pathfinding(board: Board):
     # Find the initial
 
     while len(board.remaining_nodes()) > 0:
@@ -411,32 +463,33 @@ def dijkstra_pathfinding(board):
 
 
 def a_star_pathfinding(board):
-    forks = []
     while len(board.remaining_nodes()) > 0:
-        neighbors = board.current_pos.adjacent
+        current = board.current_pos
+        neighbors = current.adjacent
         remaining_neighbors = set(neighbors) & board.remaining_nodes()
-        action = None
+        # action = None
         if len(list(remaining_neighbors)) > 1:
             action = "fork_found"
-            next_position = board.next_optimal_node(board.current_pos)[0]
+            next_position = board.next_optimal_node(current)[0]
 
         elif len(remaining_neighbors) == 1:
             action = "1_neighbor"
             next_position = remaining_neighbors.pop()
 
-        if board.current_pos.position == next_position:
+        if current.position == next_position:
             action = "no_neighbors"
 
-            next_position = board.nearest_unvisited(board.current_pos)[0]
+            next_position = board.nearest_unvisited(current)[0]
 
-        # if not next_position:
-        #     action = "no_optimal"
-        #     next_position = board.nearest_unvisited(board.current_pos)[0]
+        if not next_position:
+            action = "no_optimal"
+            next_position = board.nearest_unvisited(current)[0]
 
         if not next_position:
             action = "no_next"
 
             exit(0)
+
         if board.current_pos.position == next_position:
             continue
 
@@ -536,6 +589,24 @@ def main(stdscr=None):
         move = None
         while True:
             board.display()
+            print("Possible Moves")
+            for node in board.current_pos.adjacent:
+                x1, y1 = board.current_pos.position
+                x2, y2 = node.position
+                if node == board.next_optimal_node(board.current_pos)[0]:
+                    print(bcolors.OKGREEN)
+
+                if x2 > x1:
+                    print("Down", node)
+                elif x2 < x1:
+                    print("Up", node)
+                elif y2 > y1:
+                    print("Right", node)
+                elif y2 < y1:
+                    print("Left", node)
+
+                print(bcolors.ENDC)
+
             key = get_key()
 
             if key == "\x1b[A":  # Up arrow

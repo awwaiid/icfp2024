@@ -30,7 +30,7 @@ def main():
             # normalize_prompt = english.replace(" ", "_")
 
             # with open(f"courses/{normalize_prompt}.txt", "w") as f:
-            #     f.write(decoded)
+            #     f.write(result)
             print(result)
         except Exception as e:
             response = str(e)
