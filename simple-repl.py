@@ -8,9 +8,19 @@ from client import Client
 client = Client()
 
 
-# p = Popen(['myapp'], stdout=PIPE, stdin=PIPE, stderr=PIPE, text=True)
-# stdout_data = p.communicate(input='data_to_write')[0]
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Simple REPL for the encoder")
+    parser.add_argument(
+        "--command", help="Execute a single command and exit", type=str, required=False
+    )
+    parser.add_argument("--save", action="store_true", help="Save the output to a file")
+    args = parser.parse_args()
+    if args.command:
+        response, result = client.call(args.command)
+        print(result)
+        sys.exit()
     while True:
         english = input(">>> ")
         if english == "```":
@@ -27,6 +37,10 @@ def main():
             response, result = client.call(english)
             os.makedirs("courses", exist_ok=True)
             # write the response to a file
+            if args.save:
+                normalize_prompt = english.replace(" ", "_")
+                with open(f"courses/{normalize_prompt}.txt", "w") as f:
+                    f.write(result)
             # normalize_prompt = english.replace(" ", "_")
 
             # with open(f"courses/{normalize_prompt}.txt", "w") as f:
