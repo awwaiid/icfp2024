@@ -4,11 +4,14 @@ import json
 from copy import deepcopy
 
 import sys
+
 sys.set_int_max_str_digits(0)
 sys.setrecursionlimit(100000)
 
+
 def remainder(n, d):
     return (-1 if n < 0 else 1) * (abs(n) % abs(d))
+
 
 def integer_divide_toward_zero(a, b):
     # Perform regular integer division
@@ -33,7 +36,9 @@ class ICFP:
         self.debug_mode = True
 
         chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n"
-        int_chars = ''.join(chr(i) for i in range(33, 127))  # ASCII characters from 33 to 126
+        int_chars = "".join(
+            chr(i) for i in range(33, 127)
+        )  # ASCII characters from 33 to 126
         self.char_to_base94 = {char: idx for idx, char in enumerate(chars)}
         self.base94_to_char = {idx: char for idx, char in enumerate(chars)}
 
@@ -48,7 +53,7 @@ class ICFP:
         return "T" if ast["value"] else "F"
 
     def parse_boolean(self, token, tokens):
-        return { "type": "boolean", "value": (token == "T") }, tokens
+        return {"type": "boolean", "value": (token == "T")}, tokens
 
     def interp_boolean(self, ast, env):
         return ast
@@ -57,15 +62,19 @@ class ICFP:
         base94 = self.to_base94(ast["value"])
         return "I" + base94
 
+    def raw_encode_integer(self, val):
+        base94 = self.to_base94(val)
+        return "I" + base94
+
     def parse_integer(self, token, tokens):
         base94 = token[1:]
-        return { "type": "integer", "value": self.from_base94(base94) }, tokens
+        return {"type": "integer", "value": self.from_base94(base94)}, tokens
 
     def interp_integer(self, ast, env):
         return ast
 
     def raw_encode_string(self, value):
-        encoded_body = ''.join(chr(self.char_to_base94[char] + 33) for char in value)
+        encoded_body = "".join(chr(self.char_to_base94[char] + 33) for char in value)
         return "S" + encoded_body
 
     def encode_string(self, ast):
@@ -74,11 +83,16 @@ class ICFP:
 
     def raw_parse_string(self, token):
         encoded_body = token[1:]
-        return ''.join(self.base94_to_char[ord(char) - 33] for char in encoded_body)
+        return "".join(self.base94_to_char[ord(char) - 33] for char in encoded_body)
 
     def parse_string(self, token, tokens):
         encoded_body = token[1:]
-        return { "type": "string", "value": ''.join(self.base94_to_char[ord(char) - 33] for char in encoded_body) }, tokens
+        return {
+            "type": "string",
+            "value": "".join(
+                self.base94_to_char[ord(char) - 33] for char in encoded_body
+            ),
+        }, tokens
 
     def interp_string(self, ast, env):
         return ast
@@ -91,26 +105,26 @@ class ICFP:
     def parse_unary_operator(self, op, tokens):
         op = op[1:]
         operand, tokens = self.parse(tokens)
-        return { "type": "unary", "op": op, "left": operand }, tokens
+        return {"type": "unary", "op": op, "left": operand}, tokens
 
     def interp_unary_operator(self, ast, env):
         op = ast["op"]
         operand = self.interp(ast["left"], env)
         operand_value = operand["value"]
 
-        if op == '-':
-            return { "type": "integer", "value": -operand_value }
-        elif op == '!':
-            return { "type": "boolean", "value": not operand_value }
-        elif op == '#':
+        if op == "-":
+            return {"type": "integer", "value": -operand_value}
+        elif op == "!":
+            return {"type": "boolean", "value": not operand_value}
+        elif op == "#":
             operand = self.encode_string(operand)
             operand = operand[1:]
-            return { "type": "integer", "value": self.from_base94(operand) }
-        elif op == '$':
+            return {"type": "integer", "value": self.from_base94(operand)}
+        elif op == "$":
             operand = self.encode_integer(operand)
             operand = operand[1:]
             operand = "S" + operand
-            return { "type": "string", "value": self.raw_parse_string(operand) }
+            return {"type": "string", "value": self.raw_parse_string(operand)}
         else:
             raise ValueError(f"Unknown unary operator: {op}")
 
@@ -124,7 +138,7 @@ class ICFP:
         op = token[1:]
         left, tokens = self.parse(tokens)
         right, tokens = self.parse(tokens)
-        return { "type": "binop", "op": op, "left": left, "right": right }, tokens
+        return {"type": "binop", "op": op, "left": left, "right": right}, tokens
 
     def replace_var(self, ast, target_var, new_value):
         # print(f"replace_var. Lambda body: {json.dumps(ast)}")
@@ -138,26 +152,33 @@ class ICFP:
         elif ast["type"] == "binop":
             left = self.replace_var(ast["left"], target_var, new_value)
             right = self.replace_var(ast["right"], target_var, new_value)
-            return { "type": "binop", "op": ast["op"], "left": left, "right": right }
+            return {"type": "binop", "op": ast["op"], "left": left, "right": right}
         elif ast["type"] == "unary":
             left = self.replace_var(ast["left"], target_var, new_value)
-            return { "type": "unary", "op": ast["op"], "left": left }
+            return {"type": "unary", "op": ast["op"], "left": left}
         elif ast["type"] == "if":
             condition = self.replace_var(ast["condition"], target_var, new_value)
             true_branch = self.replace_var(ast["true"], target_var, new_value)
             false_branch = self.replace_var(ast["false"], target_var, new_value)
-            return { "type": "if", "condition": condition, "true": true_branch, "false": false_branch }
+            return {
+                "type": "if",
+                "condition": condition,
+                "true": true_branch,
+                "false": false_branch,
+            }
         elif ast["type"] == "lambda":
             if ast["var"] == target_var:
                 # This lambda overrides the target_var, so don't go deeper
                 return ast
             else:
-                return { "type": "lambda", "var": ast["var"], "body": self.replace_var(ast["body"], target_var, new_value) }
+                return {
+                    "type": "lambda",
+                    "var": ast["var"],
+                    "body": self.replace_var(ast["body"], target_var, new_value),
+                }
         else:
             # The rest are constants
             return ast
-
-
 
     # +	Integer addition	B+ I# I$ -> 5
     # -	Integer subtraction	B- I$ I# -> 1
@@ -210,64 +231,69 @@ class ICFP:
         if op == "+":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
-            return { "type": "integer", "value": left_value + right_value }
+            return {"type": "integer", "value": left_value + right_value}
         elif op == "-":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
-            return { "type": "integer", "value": left_value - right_value }
+            return {"type": "integer", "value": left_value - right_value}
         elif op == "*":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
-            return { "type": "integer", "value": left_value * right_value }
+            return {"type": "integer", "value": left_value * right_value}
         elif op == "/":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
             # return { "type": "integer", "value": left_value // right_value }
-            return { "type": "integer", "value": integer_divide_toward_zero(left_value, right_value) }
+            return {
+                "type": "integer",
+                "value": integer_divide_toward_zero(left_value, right_value),
+            }
         elif op == "%":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
-            return { "type": "integer", "value": remainder(left_value, right_value) }
+            return {"type": "integer", "value": remainder(left_value, right_value)}
         elif op == "<":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
-            return { "type": "boolean", "value": left_value < right_value }
+            return {"type": "boolean", "value": left_value < right_value}
         elif op == ">":
             if left["type"] != "integer" or right["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left} and {right}")
-            return { "type": "boolean", "value": left_value > right_value }
+            return {"type": "boolean", "value": left_value > right_value}
         elif op == "=":
             if left["type"] == "integer" and right["type"] == "integer":
-                return { "type": "boolean", "value": left_value == right_value }
+                return {"type": "boolean", "value": left_value == right_value}
             if left["type"] == "string" and right["type"] == "string":
-                return { "type": "boolean", "value": left_value == right_value }
+                return {"type": "boolean", "value": left_value == right_value}
             if left["type"] == "boolean" and right["type"] == "boolean":
-                return { "type": "boolean", "value": left_value == right_value }
-            raise ValueError(f"Expected integers or strings or booleans, got {left} and {right}")
+                return {"type": "boolean", "value": left_value == right_value}
+            raise ValueError(
+                f"Expected integers or strings or booleans, got {left} and {right}"
+            )
         elif op == "|":
             if left["type"] != "boolean" or right["type"] != "boolean":
                 raise ValueError(f"Expected boolean, got {left} and {right}")
-            return { "type": "boolean", "value": left_value or right_value }
+            return {"type": "boolean", "value": left_value or right_value}
         elif op == "&":
             if left["type"] != "boolean" or right["type"] != "boolean":
                 raise ValueError(f"Expected boolean, got {left} and {right}")
-            return { "type": "boolean", "value": left_value and right_value }
+            return {"type": "boolean", "value": left_value and right_value}
         elif op == ".":
             if left["type"] != "string" or right["type"] != "string":
                 raise ValueError(f"Expected string, got {left} and {right}")
-            return { "type": "string", "value": left_value + right_value }
+            return {"type": "string", "value": left_value + right_value}
         elif op == "T":
             if left["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left}")
             if right["type"] != "string":
                 raise ValueError(f"Expected integer, got {right}")
-            return { "type": "string", "value": right_value[:left_value] }
+            return {"type": "string", "value": right_value[:left_value]}
         elif op == "D":
             if left["type"] != "integer":
                 raise ValueError(f"Expected integer, got {left}")
             if right["type"] != "string":
                 raise ValueError(f"Expected integer, got {right}")
-            return { "type": "string", "value": right_value[left_value:] }
+            return {"type": "string", "value": right_value[left_value:]}
         else:
             raise ValueError(f"Unknown binary operator: {op}")
 
@@ -275,7 +301,7 @@ class ICFP:
         param = token[1:]
         var_num = self.from_base94(param)
         body, tokens = self.parse(tokens)
-        return { "type": "lambda", "var": var_num, "body": body }, tokens
+        return {"type": "lambda", "var": var_num, "body": body}, tokens
 
     def interp_lambda(self, ast, env):
         return ast
@@ -286,7 +312,7 @@ class ICFP:
     def parse_variable(self, token, tokens):
         body = token[1:]
         var_num = self.from_base94(body)
-        return { "type": "var", "var": var_num }, tokens
+        return {"type": "var", "var": var_num}, tokens
 
     def interp_variable(self, ast, env):
         # return env[ast["var"]]
@@ -299,7 +325,12 @@ class ICFP:
         condition, tokens = self.parse(tokens)
         true_branch, tokens = self.parse(tokens)
         false_branch, tokens = self.parse(tokens)
-        return { "type": "if", "condition": condition, "true": true_branch, "false": false_branch }, tokens
+        return {
+            "type": "if",
+            "condition": condition,
+            "true": true_branch,
+            "false": false_branch,
+        }, tokens
 
     def encode_if(self, ast):
         return f"? {self.encode(ast['condition'])} {self.encode(ast['true'])} {self.encode(ast['false'])}"
@@ -318,7 +349,7 @@ class ICFP:
         while value > 0:
             result.append(self.int_to_char[value % 94])
             value //= 94
-        return ''.join(reversed(result))
+        return "".join(reversed(result))
 
     def from_base94(self, base94):
         value = 0
@@ -369,7 +400,7 @@ class ICFP:
         else:
             raise ValueError(f"Unknown token type: {token}")
 
-    def interp(self, ast, env = {}):
+    def interp(self, ast, env={}):
         # env = deepcopy(env)
         # env["depth"] = env.get("depth", 0) + 1
         # self.debug(f"{env['depth'] * 2 * ' '}env: {json.dumps(env)}")
@@ -395,44 +426,52 @@ class ICFP:
         else:
             raise ValueError(f"Unknown type: {ast['type']}")
 
-        while result["type"] != "string" and result["type"] != "integer" and result["type"] != "boolean" and result["type"] != "lambda" and result["type"] != "var":
+        while (
+            result["type"] != "string"
+            and result["type"] != "integer"
+            and result["type"] != "boolean"
+            and result["type"] != "lambda"
+            and result["type"] != "var"
+        ):
             result = self.interp(result, env)
 
         # self.debug(f"{env['depth'] * 2 * ' '}result: {json.dumps(result)}")
         return result
 
     def interp_from_string(self, input):
-        ast, _ = self.parse(input.split(' '))
+        ast, _ = self.parse(input.split(" "))
         # print("Parse: ", json.dumps(ast))
         return self.interp(ast)
 
+
 if __name__ == "__main__":
-  #  Handle PIPED input and a --encode or --parse flag
-  import argparse
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--encode", action="store_true")
-  parser.add_argument("--parse", action="store_true")
-  parser.add_argument("--interp", action="store_true")
-  parser.add_argument("--debug", action="store_true")
-  args = parser.parse_args()
+    #  Handle PIPED input and a --encode or --parse flag
+    import argparse
 
-  icfp = ICFP()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--encode", action="store_true")
+    parser.add_argument("--parse", action="store_true")
+    parser.add_argument("--interp", action="store_true")
+    parser.add_argument("--debug", action="store_true")
+    args = parser.parse_args()
 
-  if args.debug:
-      icfp.debug_mode = True
+    icfp = ICFP()
 
-  if args.interp:
-      result = icfp.interp_from_string(input())
-      if args.encode:
-          print(icfp.encode(result))
-      else:
-          print(result)
-  elif args.encode:
-      print(icfp.raw_encode_string(input()))
-  elif args.parse:
-      ast, _ = icfp.parse(input().split(' '))
-      print(json.dumps(ast))
-      # print(icfp.encode(result))
-  else:
-      print("Please specify --encode or --parse")
-      exit(1)
+    if args.debug:
+        icfp.debug_mode = True
+
+    if args.interp:
+        result = icfp.interp_from_string(input())
+        if args.encode:
+            print(icfp.encode(result))
+        else:
+            print(result)
+    elif args.encode:
+        print(icfp.raw_encode_string(input()))
+    elif args.parse:
+        ast, _ = icfp.parse(input().split(" "))
+        print(json.dumps(ast))
+        # print(icfp.encode(result))
+    else:
+        print("Please specify --encode or --parse")
+        exit(1)

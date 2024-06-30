@@ -16,7 +16,7 @@ from collections import deque
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(BASE_DIR))
 
-from icfp_client import ICFPClient
+from client import Client as ICFPClient
 
 sys.setrecursionlimit(200000)
 
@@ -381,11 +381,6 @@ class Board:
 
             # Recalculate the path
             path = self.determine_via_shortest_dist_tsp_path()
-
-            # if self.display_moves:
-            # clear_display()
-            # self.display()
-            # time.sleep(DISPLAY_SPEED
 
     # def solve(self):
     #     while len(self.remaining_nodes()) > 0:
