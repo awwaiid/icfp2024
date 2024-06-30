@@ -75,19 +75,30 @@ def str_trip(s):
 def str_quad(s):
     return apply(lambda_(1, concat(concat(var(1), var(1)), concat(var(1), var(1)))), s)
 
+def y_comb(f):
+    return apply(lambda_(1, apply(f, apply(var(1), var(1)))), lambda_(1, apply(f, apply(var(1), var(1)))))
+
+def repeat_letter(letter, n):
+    return apply(apply(y_comb(lambda_(1, lambda_(2, concat(var(2), var(1))))), c(letter)), c(n))
+
+def echo(v):
+    return concat(c("echo "), v)
+
+print(icfp.encode(echo(repeat_letter("L", 3))))
+
 # print(json.dumps(str_double(c("LLLLLLLLLLLLLL"))))
 #  print(icfp.encode(str_double(c("LLLLLLL"))))
 
-print(icfp.encode(c("LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")))
-
-print(icfp.encode(str_double(c("LLLLLLLLLLLLLLLL"))))
-print(icfp.interp_from_string(icfp.encode(str_double(c("LLLLLLLLLLLLLLLL"))))["value"])
-
-print(icfp.encode(str_double(str_double(c("LLLLLLLLLLL")))))
-print(icfp.interp_from_string(icfp.encode(str_double(str_double(c("LLLLLLLLLLL")))))["value"])
-
-print(icfp.encode(str_trip(c("LLLLLLLLLL"))))
-print(icfp.interp_from_string(icfp.encode(str_trip(c("LLLLLLLLLL"))))["value"])
-
-print(icfp.encode(str_quad(c("LLLLLL"))))
-print(icfp.interp_from_string(icfp.encode(str_quad(c("LLLLLL"))))["value"])
+# print(icfp.encode(c("LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")))
+#
+# print(icfp.encode(str_double(c("LLLLLLLLLLLLLLLL"))))
+# print(icfp.interp_from_string(icfp.encode(str_double(c("LLLLLLLLLLLLLLLL"))))["value"])
+#
+# print(icfp.encode(str_double(str_double(c("LLLLLLLLLLL")))))
+# print(icfp.interp_from_string(icfp.encode(str_double(str_double(c("LLLLLLLLLLL")))))["value"])
+#
+# print(icfp.encode(str_trip(c("LLLLLLLLLL"))))
+# print(icfp.interp_from_string(icfp.encode(str_trip(c("LLLLLLLLLL"))))["value"])
+#
+# print(icfp.encode(str_quad(c("LLLLLL"))))
+# print(icfp.interp_from_string(icfp.encode(str_quad(c("LLLLLL"))))["value"])
