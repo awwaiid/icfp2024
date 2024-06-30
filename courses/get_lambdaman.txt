@@ -20,26 +20,26 @@ When Lambda-Man is instructed to move into a square containing a wall, nothing h
 
 The following levels are available:
 * [lambdaman1] Your score: 33. Best score: 33.
-* [lambdaman2] Your score: 60. Best score: 44.
-* [lambdaman3] Your score: 122. Best score: 58.
-* [lambdaman4] Your score: 426. Best score: 176.
-* [lambdaman5] Best score: 159.
-* [lambdaman6] Best score: 73.
-* [lambdaman7] Your score: 1257. Best score: 181.
-* [lambdaman8] Your score: 4917. Best score: 136.
-* [lambdaman9] Best score: 114.
-* [lambdaman10] Best score: 220.
-* [lambdaman11] Your score: 208737. Best score: 1615.
-* [lambdaman12] Your score: 116873. Best score: 1615.
-* [lambdaman13] Your score: 107289. Best score: 1605.
-* [lambdaman14] Your score: 137353. Best score: 1593.
-* [lambdaman15] Your score: 123697. Best score: 1609.
-* [lambdaman16] Your score: 8209. Best score: 287.
-* [lambdaman17] Best score: 231.
-* [lambdaman18] Best score: 4361.
-* [lambdaman19] Best score: 1442.
-* [lambdaman20] Best score: 6489.
-* [lambdaman21] Best score: 10609.
+* [lambdaman2] Your score: 44. Best score: 44.
+* [lambdaman3] Your score: 58. Best score: 58.
+* [lambdaman4] Your score: 410. Best score: 126.
+* [lambdaman5] Your score: 168. Best score: 142.
+* [lambdaman6] Your score: 123. Best score: 73.
+* [lambdaman7] Your score: 533. Best score: 125.
+* [lambdaman8] Your score: 4917. Best score: 113.
+* [lambdaman9] Your score: 2517. Best score: 110.
+* [lambdaman10] Best score: 127.
+* [lambdaman11] Your score: 25005. Best score: 257.
+* [lambdaman12] Your score: 30799. Best score: 256.
+* [lambdaman13] Your score: 26687. Best score: 256.
+* [lambdaman14] Your score: 33573. Best score: 257.
+* [lambdaman15] Your score: 42107. Best score: 257.
+* [lambdaman16] Your score: 8209. Best score: 245.
+* [lambdaman17] Your score: 5904. Best score: 127.
+* [lambdaman18] Your score: 66504. Best score: 191.
+* [lambdaman19] Your score: 297680. Best score: 273.
+* [lambdaman20] Your score: 113845. Best score: 211.
+* [lambdaman21] Best score: 190.
 
 To submit a solution, send an ICFP expression that evaluates to:
 

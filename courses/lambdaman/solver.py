@@ -220,6 +220,7 @@ class Board:
 
     def next_optimal_node(self, source: "Node") -> tuple["Node", int, tuple]:
         nearest, distance, shortest_distances = self.nearest_unvisited(source)
+
         return nearest, distance, shortest_distances
 
     def shortest_path(
@@ -418,35 +419,26 @@ def a_star_pathfinding(board):
         if len(list(remaining_neighbors)) > 1:
             action = "fork_found"
             next_position = board.next_optimal_node(board.current_pos)[0]
-            # Add all the other neighbors to the forks
-            for neighbor in remaining_neighbors:
-                if neighbor != next_position:
-                    forks.append(neighbor)
 
-                    # ensure forks are unique
-                    forks = list(set(forks))
         elif len(remaining_neighbors) == 1:
             action = "1_neighbor"
             next_position = remaining_neighbors.pop()
 
-        # If there are no remaining neighbors, go back to the last fork
-        elif forks:
-            action = "backtrack"
-            # find the most recent fork, that has not been visited
-
-            next_position = None
-            for fork in reversed(forks):
-                if fork in board.remaining_nodes():
-                    next_position = fork
-                    break
-
-        if not next_position:
+        if board.current_pos.position == next_position:
             action = "no_neighbors"
 
-            next_position = board.next_optimal_node(board.current_pos)[0]
+            next_position = board.nearest_unvisited(board.current_pos)[0]
+
+        # if not next_position:
+        #     action = "no_optimal"
+        #     next_position = board.nearest_unvisited(board.current_pos)[0]
 
         if not next_position:
-            next_position = random.choice(list(board.remaining_nodes()))
+            action = "no_next"
+
+            exit(0)
+        if board.current_pos.position == next_position:
+            continue
 
         print(f"Action: {action}", next_position)
         if type(next_position) == tuple:
@@ -471,6 +463,7 @@ def main(stdscr=None):
     parser.add_argument("--display", action="store_true")
     parser.add_argument("--submit", action="store_true")
     parser.add_argument("--repl", action="store_true")
+    parser.add_argument("--graph", action="store_true")
 
     args = parser.parse_args()
 
@@ -500,6 +493,22 @@ def main(stdscr=None):
     board = Board(
         board_strings, start_position=start, number=number, display=args.display
     )
+
+    if args.graph:
+        from graphviz import Digraph
+
+        def generate_graphviz(graph):
+            dot = Digraph()
+
+            for node, edges in graph.items():
+                for neighbor, weight in edges.items():
+                    dot.edge(str(node), str(neighbor), label=str(weight))
+
+            return dot.source
+
+        dot = generate_graphviz(board.graph)
+        print(dot)
+        exit(0)
 
     if args.repl:
         import sys
