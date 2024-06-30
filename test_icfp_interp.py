@@ -85,3 +85,20 @@ def test_lambda_shadowing(icfp):
     assert_interp(icfp, "B$ L\" B* v\" v\" I$", 9)
     assert_interp(icfp, "B$ L\" B* B$ L\" B+ v\" v\" v\" v\" I$", 18)
 
+def test_y_combinator(icfp):
+    # (apply (lambda v0 (* (apply (lambda v0 (+ v0 v0)) v0) v0)) 3)
+    # (\x. (apply (\x. (+ x x)) x) x) 3
+    assert_interp(icfp, "B$ L\" B* v\" v\" I$", 9)
+    assert_interp(icfp, "B$ L\" B* B$ L\" B+ v\" v\" v\" v\" I$", 18)
+
+
+# def test_compile(icfp):
+    # assert icfp.compile_from_string("B. S! S\"") == 
+
+#     y_combinator = 'L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v#'
+#
+#     L$
+#
+# f"B. SF B$ B$ L\" B$ {y_combinator} 
+
+# L$ L# ? B= v# I" v" B. v" B$ v$ B- v# I" Sl I#,'

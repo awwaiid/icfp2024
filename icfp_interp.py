@@ -443,6 +443,100 @@ class ICFP:
         # print("Parse: ", json.dumps(ast))
         return self.interp(ast)
 
+    # Translate from the ICFP language to the Python language
+    def compile(self, ast):
+        source = ""
+        if ast["type"] == "string":
+            source = '(lambda: "' + ast["value"] + '")'
+        elif ast["type"] == "integer":
+            source = "(lambda: " + str(ast["value"]) + ")"
+        elif ast["type"] == "boolean":
+            source = "lambda: True" if ast["value"] else "lambda: False"
+        elif ast["type"] == "unary":
+            source = self.compile_unary(ast)
+        elif ast["type"] == "binop":
+            source = self.compile_binop(ast)
+        elif ast["type"] == "lambda":
+            source = self.compile_lambda(ast)
+        elif ast["type"] == "var":
+            source = self.compile_var(ast)
+        elif ast["type"] == "if":
+            source = self.compile_if(ast)
+        else:
+            raise ValueError(f"Unknown type: {ast['type']}")
+        return f"{source}"
+
+    def compile_unary(self, ast):
+        op = ast["op"]
+        operand = self.compile(ast["left"])
+        if op == '-':
+            return f"lambda: -{operand}"
+        elif op == '!':
+            return f"lambda: not {operand}"
+        elif op == '#':
+            return f"lambda: from_base94({operand})"
+        elif op == '$':
+            return f"lambda: encode_string({operand})"
+        else:
+            raise ValueError(f"Unknown unary operator: {op}")
+
+    def compile_binop(self, ast):
+        op = ast["op"]
+        left = self.compile(ast["left"])
+        right = self.compile(ast["right"])
+        if op == "+":
+            return f"(lambda: {left}() + {right}())"
+        elif op == "-":
+            return f"(lambda: {left}() - {right}())"
+        elif op == "*":
+            return f"(lambda: {left}() * {right}())"
+        elif op == "/":
+            return f"(lambda: integer_divide_toward_zero({left}(), {right}())"
+        elif op == "%":
+            return f"remainder({left}, {right})"
+        elif op == "<":
+            return f"({left} < {right})"
+        elif op == ">":
+            return f"({left} > {right})"
+        elif op == "=":
+            return f"({left} == {right})"
+        elif op == "|":
+            return f"({left} or {right})"
+        elif op == "&":
+            return f"({left} and {right})"
+        elif op == ".":
+            return f"(lambda: {left}() + {right}())"
+        elif op == "T":
+            return f"{right}[:{left}]"
+        elif op == "D":
+            return f"{right}[{left}:]"
+        elif op == "$":
+            return f"(lambda: ({left})({right}))"
+        else:
+            raise ValueError(f"Unknown binary operator: {op}")
+
+    def compile_lambda(self, ast):
+        var = ast["var"]
+        body = self.compile(ast["body"])
+        return f"lambda v{var}: {body}"
+
+    def compile_var(self, ast):
+        return f"v{ast['var']}"
+
+    def compile_if(self, ast):
+        condition = self.compile(ast["condition"])
+        true_branch = self.compile(ast["true"])
+        false_branch = self.compile(ast["false"])
+        return f"(lambda: ({true_branch}() if {condition}() else {false_branch}()))"
+
+    def compile_from_string(self, input):
+        ast, _ = self.parse(input.split(' '))
+        return self.compile(ast) + "()"
+
+    def compile_eval(self, input):
+        proggie = self.compile_from_string(input)
+        result = eval(proggie)
+        return result
 
 if __name__ == "__main__":
     #  Handle PIPED input and a --encode or --parse flag
@@ -453,6 +547,8 @@ if __name__ == "__main__":
     parser.add_argument("--parse", action="store_true")
     parser.add_argument("--interp", action="store_true")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--compile", action="store_true")
+    parser.add_argument("--eval", action="store_true")
     args = parser.parse_args()
 
     icfp = ICFP()
@@ -465,13 +561,18 @@ if __name__ == "__main__":
         if args.encode:
             print(icfp.encode(result))
         else:
-            print(result)
+            print(result["value"])
+    elif args.compile:
+        result = icfp.compile_from_string(input())
+        print(result)
+    elif args.eval:
+        result = icfp.compile_eval(input())
+        print(result)
     elif args.encode:
         print(icfp.raw_encode_string(input()))
     elif args.parse:
         ast, _ = icfp.parse(input().split(" "))
         print(json.dumps(ast))
-        # print(icfp.encode(result))
     else:
-        print("Please specify --encode or --parse")
+        print("Please specify action")
         exit(1)
