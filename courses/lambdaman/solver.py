@@ -2,14 +2,11 @@ from functools import cached_property
 import heapq
 import math
 from pathlib import Path
-import random
-import curses
+
 import time
 import sys
-import time
 from astar import AStar
-import pprint
-from collections import deque
+
 
 # Append the root directory to the sys.path
 # expanded_path = os.expandPath(__file__)
@@ -18,7 +15,7 @@ sys.path.append(str(BASE_DIR))
 
 from client import Client as ICFPClient
 
-sys.setrecursionlimit(200000)
+sys.setrecursionlimit(1000)
 
 DISPLAY_SPEED = 0.05
 
@@ -250,11 +247,34 @@ class Board:
 
         return best_node, best_node.total_cost, best_node.costs
 
+    @cached_property
+    def start_costs(self):
+        return self.start_position.costs
+
+    @cached_property
+    def max_costs(self):
+        shortest_distances, _ = self.start_costs
+
+        inverted_distances = max(shortest_distances, key=shortest_distances.get)
+
+        print("Inverted Distances", inverted_distances)
+        return inverted_distances.costs
+
     def next_optimal_node(self, source: "Node") -> tuple["Node", int, tuple]:
-        distances, pre = source.costs
+        current_costs, _ = source.costs
+
+        # fine the node that is the highest distance
+        # from the current node
+
+        inverted_distances, pre = self.max_costs
+
+        # distances, pre = source.costs
         unvisited = self.remaining()
-        nearest = min(unvisited, key=lambda node: distances[node])
-        return nearest, distances[nearest], (distances, pre)
+        nearest = max(
+            unvisited,
+            key=lambda node: current_costs[node] / (inverted_distances[node] or 1),
+        )
+        return nearest, inverted_distances[nearest], (inverted_distances, pre)
 
     def shortest_path(
         self, source: str, target: str, distances=None, predecessors=None
@@ -337,20 +357,27 @@ class Board:
     def determine_via_shortest_dist_tsp_path(self):
         shortest_distances, _ = self.current_pos.costs
 
+        # fine the node that is the highest distance
+        # from the current node
+
+        inverted_distances, _ = max(
+            shortest_distances, key=shortest_distances.get
+        ).costs
+
         # sort the remaining nodes by the shortest distance
 
         tsp_graph = {}
         path = []
         # Build a graph where all nodes are connected to the start node
         for node in self.remaining_nodes():
-            tsp_graph[node] = shortest_distances[node]
+            tsp_graph[node] = shortest_distances[node] / (inverted_distances[node] or 1)
 
         # Preform a Travelling Salesman Problem
         # Find the minimum path that visits all the nodes
         # Find the nearest node to the start node
         current = self.current_pos
         # Local TSP graph limit
-        LIMIT = 5
+        LIMIT = 15
         while len(tsp_graph) > 0 and len(path) < LIMIT:
             nearest = min(tsp_graph, key=tsp_graph.get)
             path.append((nearest, tsp_graph[nearest]))
@@ -454,7 +481,7 @@ class Node:
         """Return the shortest distances and predecessors from this node to all other nodes in the graph BUT adds weight to previously visited nodes"""
         distances, predecessors = self.raw_costs
         for node in self.board.visited:
-            distances[node] += self.board.node_at(node).visits + 1
+            distances[node] += self.board.node_at(node).visits
         return distances, predecessors
 
     @property
