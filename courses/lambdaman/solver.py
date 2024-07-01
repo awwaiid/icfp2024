@@ -14,19 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(BASE_DIR))
 
 from client import Client as ICFPClient
-from icfp_dsl import (
-    apply,
-    c,
-    concat,
-    eq,
-    if_,
-    lambda_,
-    loop,
-    minus,
-    repeat_letter,
-    var,
-    y_comb,
-)
+from icfp_dsl import c, concat, loop, repeat_letter
 from icfp_interp import ICFP
 
 sys.setrecursionlimit(1000)
@@ -47,13 +35,6 @@ def solve_6():
 
 def solve_9():
     # ( 49 x R D 49 x L D ) x 25
-    # loop(25) { // 1
-    # (loop(49) { //10 "R".concat(loop(48)) }).concat("D")
-    #  .concat(
-    #        (loop(49) { // 20 "L".concat(loop(48)) }).concat("D")).(loop(24))
-
-    # a + b
-    # + b a
     return icfp.encode(
         concat(
             c("solve lambdaman9 "),
