@@ -433,6 +433,7 @@ class ICFP:
             and result["type"] != "lambda"
             and result["type"] != "var"
         ):
+            print(f"result: {json.dumps(result)}")
             result = self.interp(result, env)
 
         # self.debug(f"{env['depth'] * 2 * ' '}result: {json.dumps(result)}")
@@ -469,13 +470,13 @@ class ICFP:
     def compile_unary(self, ast):
         op = ast["op"]
         operand = self.compile(ast["left"])
-        if op == '-':
+        if op == "-":
             return f"lambda: -{operand}"
-        elif op == '!':
+        elif op == "!":
             return f"lambda: not {operand}"
-        elif op == '#':
+        elif op == "#":
             return f"lambda: from_base94({operand})"
-        elif op == '$':
+        elif op == "$":
             return f"lambda: encode_string({operand})"
         else:
             raise ValueError(f"Unknown unary operator: {op}")
@@ -530,13 +531,14 @@ class ICFP:
         return f"(lambda: ({true_branch}() if {condition}() else {false_branch}()))"
 
     def compile_from_string(self, input):
-        ast, _ = self.parse(input.split(' '))
+        ast, _ = self.parse(input.split(" "))
         return self.compile(ast) + "()"
 
     def compile_eval(self, input):
         proggie = self.compile_from_string(input)
         result = eval(proggie)
         return result
+
 
 if __name__ == "__main__":
     #  Handle PIPED input and a --encode or --parse flag
@@ -549,6 +551,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--compile", action="store_true")
     parser.add_argument("--eval", action="store_true")
+    parser.add_argument("--graph", action="store_true")
     args = parser.parse_args()
 
     icfp = ICFP()
@@ -573,6 +576,54 @@ if __name__ == "__main__":
     elif args.parse:
         ast, _ = icfp.parse(input().split(" "))
         print(json.dumps(ast))
+
+    elif args.graph:
+        from graphviz import Digraph
+
+        # Parse the input
+        ast, _ = icfp.parse(input().split(" "))
+        dot = Digraph()
+
+        def add_node(node):
+            node_id = str(id(node))  # Unique identifier for the node
+
+            if node["type"] == "string":
+                dot.node(node_id, f'String: "{node["value"]}"')
+            elif node["type"] == "integer":
+                dot.node(node_id, f'Integer: {node["value"]}')
+            elif node["type"] == "boolean":
+                dot.node(node_id, f'Boolean: {node["value"]}')
+            elif node["type"] == "unary":
+                dot.node(node_id, f'Unary: {node["op"]}')
+                add_node(node["left"])
+                dot.edge(node_id, str(id(node["left"])))
+            elif node["type"] == "binop":
+                dot.node(node_id, f'Binary: {node["op"]}')
+                add_node(node["left"])
+                add_node(node["right"])
+                dot.edge(node_id, str(id(node["left"])))
+                dot.edge(node_id, str(id(node["right"])))
+            elif node["type"] == "lambda":
+                dot.node(node_id, f'Lambda: {node["var"]}')
+                add_node(node["body"])
+                dot.edge(node_id, str(id(node["body"])))
+            elif node["type"] == "var":
+                dot.node(node_id, f'Var: {node["var"]}')
+            elif node["type"] == "if":
+                dot.node(node_id, f"If")
+                add_node(node["condition"])
+                add_node(node["true"])
+                add_node(node["false"])
+                dot.edge(node_id, str(id(node["condition"])))
+                dot.edge(node_id, str(id(node["true"])))
+                dot.edge(node_id, str(id(node["false"])))
+
+        # Add the root node to the graph
+        add_node(ast)
+
+        # Output the dot source
+        print(dot.source)
+        exit(0)
     else:
         print("Please specify action")
         exit(1)
