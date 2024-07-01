@@ -58,7 +58,7 @@ def raw_parse_string(token):
     return "".join(base94_to_char[ord(char) - 33] for char in encoded_body)
 
 # Lots and lots and lots of fake variables
-v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32, v33, v34, v35, v36, v37, v38, v39, v40 = [None] * 40
+# v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32, v33, v34, v35, v36, v37, v38, v39, v40 = [None] * 40
 
 class ICFP:
     """
@@ -559,17 +559,18 @@ class ICFP:
         elif op == "D":
             return f"(lambda: {right}()[{left}():])"
         elif op == "$":
-            return f"{left}({right})"
+            return f"(lambda: {left}()({right}))"
         else:
             raise ValueError(f"Unknown binary operator: {op}")
 
     def compile_lambda(self, ast):
         var = ast["var"]
         body = self.compile(ast["body"])
-        return f"(lambda v{var}: {body})"
+        return f"(lambda: (lambda v{var}: {body}()))"
 
     def compile_var(self, ast):
-        return f"v{ast['var']}"
+        # return f"(lambda: eval('lambda: v{ast['var']}'))"
+        return f"(lambda: v{ast['var']}())"
 
     def compile_if(self, ast):
         condition = self.compile(ast["condition"])
