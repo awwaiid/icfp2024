@@ -14,10 +14,66 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(BASE_DIR))
 
 from client import Client as ICFPClient
+from icfp_dsl import (
+    apply,
+    c,
+    concat,
+    eq,
+    if_,
+    lambda_,
+    loop,
+    minus,
+    repeat_letter,
+    var,
+    y_comb,
+)
+from icfp_interp import ICFP
 
 sys.setrecursionlimit(1000)
 
-DISPLAY_SPEED = 0.05
+DISPLAY_SPEED = 0.2
+
+icfp = ICFP()
+
+
+def solve_6():
+    return icfp.encode(
+        concat(
+            c("solve lambdaman6 "),
+            repeat_letter("R", 199),
+        )
+    )
+
+
+def solve_9():
+    # ( 49 x R D 49 x L D ) x 25
+    # loop(25) { // 1
+    # (loop(49) { //10 "R".concat(loop(48)) }).concat("D")
+    #  .concat(
+    #        (loop(49) { // 20 "L".concat(loop(48)) }).concat("D")).(loop(24))
+
+    # a + b
+    # + b a
+    return icfp.encode(
+        concat(
+            c("solve lambdaman9 "),
+            loop(
+                4,
+                25,
+                concat(
+                    concat(
+                        repeat_letter("R", 49),
+                        c("D"),
+                    ),
+                    concat(
+                        repeat_letter("L", 49),
+                        c("D"),
+                    ),
+                ),
+                concat,
+            ),
+        )
+    )
 
 
 class bcolors:
@@ -638,6 +694,20 @@ def main(stdscr=None):
     # remove lambdaman if present and .txt
     file_name = file_name.replace("lambdaman", "").replace(".txt", "")
     number = int(file_name)
+
+    if number == 6:
+        client = ICFPClient()
+
+        resp, decoded = client.call("`" + solve_6())
+        print(f"Response: {decoded}")
+        exit(0)
+
+    if number == 9:
+        client = ICFPClient()
+
+        resp, decoded = client.call("`" + solve_9())
+        print(f"Response: {decoded}")
+        exit(0)
 
     with open(file_path) as f:
         board = f.readlines()

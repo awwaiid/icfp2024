@@ -17,10 +17,11 @@ class Client:
             encoded_prompt = prompt[1:]
         else:
             encoded_prompt = self.attempt_pack(prompt)
+        print(f"encoded prompt: {encoded_prompt}")
         response = requests.post(self.url, headers=self.headers, data=encoded_prompt)
-        # print(f"raw response: {response.text}")
-        result = self.icfp.interp_from_string(response.text)["value"]
-        # result = self.icfp.eval_from_string(response.text)
+        print(f"raw response: {response.text}")
+        # result = self.icfp.interp_from_string(response.text)["value"]
+        result = self.icfp.eval_from_string(response.text)
 
         return response, result
 
@@ -66,15 +67,9 @@ class Client:
 
             packed_output = packed_output * n_of_chars + index
 
-        print("Packed output: ", packed_output)
-
         encoded_packed_output = self.icfp.raw_encode_integer((packed_output))
 
-        print("Encoded packed output: ", encoded_packed_output)
-
         encoded_n_of_chars = self.icfp.raw_encode_integer(n_of_chars)
-
-        print("Encoded n of chars: ", encoded_n_of_chars)
 
         encoded_first_char = self.icfp.raw_encode_string(unique_chars[0])
 

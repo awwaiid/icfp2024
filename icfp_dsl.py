@@ -76,7 +76,7 @@ def lambda_(a, b):
 
 
 def if_(a, b, c):
-    return {"type": "if", "cond": a, "then": b, "else": c}
+    return {"type": "if", "condition": a, "true": b, "false": c}
 
 
 def var(n):
@@ -103,8 +103,29 @@ def y_comb(f):
 
 
 def repeat_letter(letter, n):
+    return loop(3, n, c(letter), concat)
+
+
+def loop(id, n, f, opfn):
+    # A looping construct that applies a function n times, were B of func
+    # is the result of the previous iteration
+    reduce_1 = apply(var(id), minus(var(n), c(1)))
     return apply(
-        apply(y_comb(lambda_(1, lambda_(2, concat(var(2), var(1))))), c(letter)), c(n)
+        apply(
+            lambda_(0, y_comb(var(0))),
+            lambda_(
+                id,
+                lambda_(
+                    n,
+                    if_(
+                        eq(var(n), c(1)),
+                        f,
+                        opfn(f, reduce_1),
+                    ),
+                ),
+            ),
+        ),
+        c(n),
     )
 
 
