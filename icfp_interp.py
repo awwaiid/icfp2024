@@ -626,6 +626,7 @@ if __name__ == "__main__":
 
     elif args.graph:
         from graphviz import Digraph
+        import urllib.parse
 
         # Parse the input
         ast, _ = icfp.parse(input().split(" "))
@@ -669,7 +670,12 @@ if __name__ == "__main__":
         add_node(ast)
 
         # Output the dot source
-        print(dot.source)
+        # print(dot.source)
+
+        safe_string = urllib.parse.quote(dot.source)
+
+        print(f"https://dreampuf.github.io/GraphvizOnline/#{safe_string}")
+
         exit(0)
     else:
         print("Please specify action")
