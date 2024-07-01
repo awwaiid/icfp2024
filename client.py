@@ -19,9 +19,10 @@ class Client:
             encoded_prompt = self.attempt_pack(prompt)
         response = requests.post(self.url, headers=self.headers, data=encoded_prompt)
         # print(f"raw response: {response.text}")
-        result = self.icfp.interp_from_string(response.text)
+        result = self.icfp.interp_from_string(response.text)["value"]
+        # result = self.icfp.eval_from_string(response.text)
 
-        return response, result["value"]
+        return response, result
 
     def attempt_pack(self, prompt):
         # call the pack method, and if the output of pack is shorter than stanard encode use the packed version

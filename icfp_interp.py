@@ -21,6 +21,44 @@ def integer_divide_toward_zero(a, b):
         result += 1
     return result
 
+base_94_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`|~ \n"
+base_94_int_chars = "".join(
+    chr(i) for i in range(33, 127)
+)  # ASCII characters from 33 to 126
+char_to_base94 = {char: idx for idx, char in enumerate(base_94_chars)}
+base94_to_char = {idx: char for idx, char in enumerate(base_94_chars)}
+int_to_char = {idx: char for idx, char in enumerate(base_94_int_chars)}
+char_to_int = {char: int(idx) for idx, char in enumerate(base_94_int_chars)}
+
+def to_base94(value):
+    if value == 0:
+        return "!"
+    result = []
+    while value > 0:
+        result.append(int_to_char[value % 94])
+        value //= 94
+    return "".join(reversed(result))
+
+def raw_encode_string(value):
+    encoded_body = "".join(chr(char_to_base94[char] + 33) for char in value)
+    return "S" + encoded_body
+
+def raw_encode_integer(val):
+    base94 = to_base94(val)
+    return "I" + base94
+
+def from_base94(base94):
+    value = 0
+    for char in base94:
+        value = value * 94 + char_to_int[char]
+    return value
+
+def raw_parse_string(token):
+    encoded_body = token[1:]
+    return "".join(base94_to_char[ord(char) - 33] for char in encoded_body)
+
+# Lots and lots and lots of fake variables
+v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32, v33, v34, v35, v36, v37, v38, v39, v40 = [None] * 40
 
 class ICFP:
     """
@@ -377,6 +415,9 @@ class ICFP:
         else:
             raise ValueError(f"Unknown type: {ast['type']}")
 
+    def parse_from_string(self, input):
+        return self.parse(input.split(" "))
+
     def parse(self, tokens):
         if len(tokens) == 0:
             return [], tokens
@@ -448,11 +489,11 @@ class ICFP:
     def compile(self, ast):
         source = ""
         if ast["type"] == "string":
-            source = '(lambda: "' + ast["value"] + '")'
+            source = self.compile_string(ast)
         elif ast["type"] == "integer":
             source = "(lambda: " + str(ast["value"]) + ")"
         elif ast["type"] == "boolean":
-            source = "lambda: True" if ast["value"] else "lambda: False"
+            source = "(lambda: True)" if ast["value"] else "(lambda: False)"
         elif ast["type"] == "unary":
             source = self.compile_unary(ast)
         elif ast["type"] == "binop":
@@ -467,17 +508,23 @@ class ICFP:
             raise ValueError(f"Unknown type: {ast['type']}")
         return f"{source}"
 
+        # = self.llm.detokenize(all_tokens).decode("utf-8", "backslashreplace").replace('"', '\\"').replace("\\", "\\\\")
+    def compile_string(self, ast):
+        string = ast["value"]
+        string = string.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+        return '(lambda: "' + string + '")'
+
     def compile_unary(self, ast):
         op = ast["op"]
         operand = self.compile(ast["left"])
         if op == "-":
-            return f"lambda: -{operand}"
+            return f"(lambda: -({operand})())"
         elif op == "!":
-            return f"lambda: not {operand}"
+            return f"(lambda: not ({operand}()))"
         elif op == "#":
-            return f"lambda: from_base94({operand})"
+            return f"(lambda: from_base94(raw_encode_string({operand}())[1:]))"
         elif op == "$":
-            return f"lambda: encode_string({operand})"
+            return f"(lambda: raw_parse_string('S'+raw_encode_integer({operand}())[1:]))"
         else:
             raise ValueError(f"Unknown unary operator: {op}")
 
@@ -492,34 +539,34 @@ class ICFP:
         elif op == "*":
             return f"(lambda: {left}() * {right}())"
         elif op == "/":
-            return f"(lambda: integer_divide_toward_zero({left}(), {right}())"
+            return f"(lambda: integer_divide_toward_zero({left}(), {right}()))"
         elif op == "%":
-            return f"remainder({left}, {right})"
+            return f"(lambda: remainder({left}(), {right}()))"
         elif op == "<":
-            return f"({left} < {right})"
+            return f"(lambda: {left}() < {right}())"
         elif op == ">":
-            return f"({left} > {right})"
+            return f"(lambda: {left}() > {right}())"
         elif op == "=":
-            return f"({left} == {right})"
+            return f"(lambda: {left}() == {right}())"
         elif op == "|":
-            return f"({left} or {right})"
+            return f"(lambda: {left}() or {right}())"
         elif op == "&":
-            return f"({left} and {right})"
+            return f"(lambda: {left}() and {right}())"
         elif op == ".":
             return f"(lambda: {left}() + {right}())"
         elif op == "T":
-            return f"{right}[:{left}]"
+            return f"(lambda: {right}()[:{left}()])"
         elif op == "D":
-            return f"{right}[{left}:]"
+            return f"(lambda: {right}()[{left}():])"
         elif op == "$":
-            return f"(lambda: ({left})({right}))"
+            return f"{left}({right})"
         else:
             raise ValueError(f"Unknown binary operator: {op}")
 
     def compile_lambda(self, ast):
         var = ast["var"]
         body = self.compile(ast["body"])
-        return f"lambda v{var}: {body}"
+        return f"(lambda v{var}: {body})"
 
     def compile_var(self, ast):
         return f"v{ast['var']}"
@@ -534,7 +581,7 @@ class ICFP:
         ast, _ = self.parse(input.split(" "))
         return self.compile(ast) + "()"
 
-    def compile_eval(self, input):
+    def eval_from_string(self, input):
         proggie = self.compile_from_string(input)
         result = eval(proggie)
         return result
@@ -569,12 +616,12 @@ if __name__ == "__main__":
         result = icfp.compile_from_string(input())
         print(result)
     elif args.eval:
-        result = icfp.compile_eval(input())
+        result = icfp.eval_from_string(input())
         print(result)
     elif args.encode:
         print(icfp.raw_encode_string(input()))
     elif args.parse:
-        ast, _ = icfp.parse(input().split(" "))
+        ast, _ = icfp.parse_from_string(input())
         print(json.dumps(ast))
 
     elif args.graph:
