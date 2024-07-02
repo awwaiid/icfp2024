@@ -1,0 +1,99 @@
+B. SF B$ B$ L" B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# L$ L# ? B= v# I" v" B. v" B$ v$ B- v# I" Sl I#,
+
+
+L.......................................................................................................................................................................................................
+
+
+
+B. S3/,6%},!-"$!-!.[} B$ B$ L" B$ L" B$ L# B$ v" B$ v# v# L# B$ v" B$ v# v# L$ L# ? B= v# I" v" B. v" B$ v$ B- v# I" SL I#,
+
+
+
+  (lambda:
+   (lambda: "L")
+   () +
+   (lambda:
+    (
+     (lambda:
+      (lambda v1:
+       (lambda:
+        (lambda v1:
+         (lambda:
+          (lambda v2:
+           (lambda:
+            (v1
+             ())
+            (
+             (lambda:
+              (v2
+               ())
+              (v2))))
+           ())
+          (lambda v2:
+           (lambda:
+            (v1
+             ())
+            (
+             (lambda:
+              (v2
+               ())
+              (v2))))))
+())
+  (lambda v3: lambda v2:
+   (lambda:
+    (v1
+     () if
+     (lambda: v2
+      () ==
+      (lambda: 1)
+      ())
+     () else
+     (lambda: v1
+      () +
+      (lambda:
+       (v3
+        ())
+       (
+        (lambda: v2
+         () -
+         (lambda: 1)
+         ())))
+      ())
+     ()))))
+())
+  (
+   (lambda: ".")))
+  ())
+  (
+   (lambda: 199)))
+  ())
+()
+
+
+
+
+ (lambda: (
+   (lambda v1: v1)()
+)(
+  (lambda: (lambda: 7)() - (lambda: 2)())
+  )
+  )()
+
+(
+  (lambda v1: v1)()
+)(
+  (lambda: (lambda: 7)() - (lambda: 2)()))()
+
+
+
+ (
+   lambda:
+     (lambda: "L")() + (
+       lambda v1: (
+         lambda v1:
+           (lambda v2: v1(v2(v2)))((lambda v2: v1(v2(v2)))))((lambda v3: (lambda v2: (lambda: (v1() if (lambda: v2() == (lambda: 1)())() else (lambda: v1() + v3((lambda: v2() - (lambda: 1)()))())()))))))((lambda: "."))((lambda: 199))()
+)()
+
+
+
+
