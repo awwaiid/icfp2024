@@ -45,5 +45,5 @@ Our team's collaboration for [ICFP Contest 2024](https://icfpcontest2024.github.
     * Mario or someone solved 5
 * A fun time was had by all!!!!
 
-[]!(./rank.png)
+![](./rank.png)
 
