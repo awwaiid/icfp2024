@@ -587,6 +587,177 @@ class ICFP:
         result = eval(proggie)
         return result
 
+    def ocaml_compile(self, ast):
+        source = ""
+        if ast["type"] == "string":
+            source = self.ocaml_compile_string(ast)
+        elif ast["type"] == "integer":
+            source = "(fun () -> Z.of_int " + str(ast["value"]) + ")"
+        elif ast["type"] == "boolean":
+            source = "(fun () -> true)" if ast["value"] else "(fun () -> false)"
+        elif ast["type"] == "unary":
+            source = self.ocaml_compile_unary(ast)
+        elif ast["type"] == "binop":
+            source = self.ocaml_compile_binop(ast)
+        elif ast["type"] == "lambda":
+            source = self.ocaml_compile_lambda(ast)
+        elif ast["type"] == "var":
+            source = self.ocaml_compile_var(ast)
+        elif ast["type"] == "if":
+            source = self.ocaml_compile_if(ast)
+        else:
+            raise ValueError(f"Unknown type: {ast['type']}")
+        return f"{source}"
+
+    def ocaml_compile_string(self, ast):
+        string = ast["value"]
+        string = string.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+        return '(fun () -> "' + string + '")'
+
+    def ocaml_compile_unary(self, ast):
+        op = ast["op"]
+        operand = self.ocaml_compile(ast["left"])
+        if op == "-":
+            return f"(fun () -> Z.neg ({operand} ()))"
+        elif op == "!":
+            return f"(fun () -> not ({operand} ()))"
+        elif op == "#":
+            return f"(fun () -> Z.of_string (String.sub (raw_encode_string ({operand} ())) 1 (String.length (raw_encode_string ({operand} ())) - 1)))"
+        elif op == "$":
+            return f"(fun () -> raw_parse_string (\"S\" ^ (String.sub (raw_encode_integer ({operand} ())) 1 (String.length (raw_encode_integer ({operand} ())) - 1))))"
+        else:
+            raise ValueError(f"Unknown unary operator: {op}")
+
+    def ocaml_compile_binop(self, ast):
+        op = ast["op"]
+        left = self.ocaml_compile(ast["left"])
+        right = self.ocaml_compile(ast["right"])
+        if op == "+":
+            return f"(fun () -> Z.add ({left} ()) ({right} ()))"
+        elif op == "-":
+            return f"(fun () -> Z.sub ({left} ()) ({right} ()))"
+        elif op == "*":
+            return f"(fun () -> Z.mul ({left} ()) ({right} ()))"
+        elif op == "/":
+            return f"(fun () -> Z.div ({left} ()) ({right} ()))"
+        elif op == "%":
+            return f"(fun () -> Z.rem ({left} ()) ({right} ()))"
+        elif op == "<":
+            return f"(fun () -> Z.lt ({left} ()) ({right} ()))"
+        elif op == ">":
+            return f"(fun () -> Z.gt ({left} ()) ({right} ()))"
+        elif op == "=":
+            return f"(fun () -> ({left} ()) = ({right} ()))"
+        elif op == "|":
+            return f"(fun () -> ({left} ()) || ({right} ()))"
+        elif op == "&":
+            return f"(fun () -> ({left} ()) && ({right} ()))"
+        elif op == ".":
+            return f"(fun () -> ({left} ()) ^ ({right} ()))"
+        elif op == "T":
+            return f"(fun () -> String.sub ({right} ()) 0 (Z.to_int ({left} ())))"
+        elif op == "D":
+            return f"(fun () -> String.sub ({right} ()) (Z.to_int ({left} ())) (String.length ({right} ()) - Z.to_int ({left} ())))"
+        elif op == "$":
+            return f"(fun () -> ({left} ()) ({right}))"
+        else:
+            raise ValueError(f"Unknown binary operator: {op}")
+
+    def ocaml_compile_lambda(self, ast):
+        var = ast["var"]
+        body = self.ocaml_compile(ast["body"])
+        return f"(fun () -> (fun v{var} -> {body} ()))"
+
+    def ocaml_compile_var(self, ast):
+        return f"(fun () -> v{ast['var']} ())"
+
+    def ocaml_compile_if(self, ast):
+        condition = self.ocaml_compile(ast["condition"])
+        true_branch = self.ocaml_compile(ast["true"])
+        false_branch = self.ocaml_compile(ast["false"])
+        return f"(fun () -> if {condition} () then {true_branch} () else {false_branch} ())"
+
+    def ocaml_compile_from_string(self, input):
+        ast, _ = self.parse(input.split(" "))
+        ocaml_code = self.ocaml_compile(ast)
+
+        # Add necessary OCaml boilerplate and helper functions
+        ocaml_program = f"""
+open Z
+open Printf
+
+let rec from_base94 s =
+  let base = Z.of_int 94 in
+  let char_to_int c =
+    let code = Char.code c in
+    if code >= 33 && code <= 126 then Z.of_int (code - 33)
+    else failwith "Invalid character in base94 string"
+  in
+  String.fold_left (fun acc c -> Z.add (Z.mul acc base) (char_to_int c)) Z.zero s
+
+let rec to_base94 n =
+  let base = Z.of_int 94 in
+  if Z.equal n Z.zero then "!"
+  else
+    let rec aux n acc =
+      if Z.equal n Z.zero then acc
+      else
+        let digit = Z.rem n base in
+        let char = Char.chr (Z.to_int digit + 33) in
+        aux (Z.div n base) (String.make 1 char ^ acc)
+    in
+    aux n ""
+
+let raw_encode_string s =
+  "S" ^ String.map (fun c -> Char.chr ((Char.code c + 33) mod 94 + 33)) s
+
+let raw_parse_string s =
+  String.map (fun c -> Char.chr ((Char.code c - 33 + 94) mod 94)) (String.sub s 1 (String.length s - 1))
+
+let raw_encode_integer n =
+  "I" ^ to_base94 n
+
+let remainder a b =
+  let sign_a = Z.sign a in
+  let sign_b = Z.sign b in
+  let abs_rem = Z.rem (Z.abs a) (Z.abs b) in
+  if sign_a >= 0 then abs_rem else Z.neg abs_rem
+
+let result = {ocaml_code} ()
+
+let () =
+  match result with
+  | `Int n -> printf "%s\\n" (Z.to_string n)
+  | `Bool b -> printf "%b\\n" b
+  | `String s -> printf "%s\\n" s
+"""
+        return ocaml_program
+
+    def ocaml_eval_from_string(self, input):
+        ocaml_program = self.ocaml_compile_from_string(input)
+
+        # Write the OCaml program to a temporary file
+        with open("temp.ml", "w") as f:
+            f.write(ocaml_program)
+
+        # Compile and run the OCaml program
+        import subprocess
+        subprocess.run(["ocamlc", "-o", "temp", "zarith.cma", "temp.ml"])
+        result = subprocess.run(["./temp"], capture_output=True, text=True)
+
+        # Clean up temporary files
+        subprocess.run(["rm", "temp.ml", "temp", "temp.cmi", "temp.cmo"])
+
+        return result.stdout.strip()
+
+    # def compile_and_eval_from_string(self, input, language='python'):
+    #     if language.lower() == 'python':
+    #         return self.eval_from_string(input)
+    #     elif language.lower() == 'ocaml':
+    #         return self.ocaml_eval_from_string(input)
+    #     else:
+    #         raise ValueError(f"Unsupported language: {language}")
+
 
 if __name__ == "__main__":
     #  Handle PIPED input and a --encode or --parse flag
@@ -600,6 +771,7 @@ if __name__ == "__main__":
     parser.add_argument("--compile", action="store_true")
     parser.add_argument("--eval", action="store_true")
     parser.add_argument("--graph", action="store_true")
+    parser.add_argument("--eval-ocaml", action="store_true")
     args = parser.parse_args()
 
     icfp = ICFP()
@@ -618,6 +790,9 @@ if __name__ == "__main__":
         print(result)
     elif args.eval:
         result = icfp.eval_from_string(input())
+        print(result)
+    elif args.eval_ocaml:
+        result = icfp.ocaml_eval_from_string(input())
         print(result)
     elif args.encode:
         print(icfp.raw_encode_string(input()))
